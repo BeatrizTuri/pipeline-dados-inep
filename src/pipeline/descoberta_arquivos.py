@@ -2,18 +2,20 @@ import csv
 import re
 from pathlib import Path
 
-from src.pipeline.config import MANIFESTO_ARQUIVOS, PROJECT_ROOT, RAW_TAXAS_RENDIMENTO_DIR
+from src.pipeline.config import INVENTARIO_ARQUIVOS, PROJECT_ROOT, RAW_TAXAS_RENDIMENTO_DIR
 
 
 EXTENSOES_EXCEL = {".xlsx", ".xls"}
 EXTENSOES_IGNORADAS = {".txt", ".md5", ".ods", ".pdf", ".zip"}
 PADRAO_ANO = re.compile(r"(?:19|20)\d{2}")
 
+
 def caminho_relativo(caminho: Path) -> str:
     try:
         return caminho.resolve().relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
         return caminho.as_posix()
+
 
 def extrair_ano(caminho: Path) -> str:
     anos = PADRAO_ANO.findall(caminho.as_posix())
@@ -80,9 +82,9 @@ def descobrir_arquivos_brutos(diretorio_base: Path = RAW_TAXAS_RENDIMENTO_DIR) -
     return registros
 
 
-def gerar_manifesto_arquivos(
+def gerar_inventario_arquivos(
     diretorio_base: Path = RAW_TAXAS_RENDIMENTO_DIR,
-    caminho_saida: Path = MANIFESTO_ARQUIVOS,
+    caminho_saida: Path = INVENTARIO_ARQUIVOS,
 ) -> list[dict[str, str]]:
     registros = descobrir_arquivos_brutos(diretorio_base)
     caminho_saida.parent.mkdir(parents=True, exist_ok=True)
