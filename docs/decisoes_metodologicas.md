@@ -18,3 +18,19 @@
 - Os dados são carregados como texto (`dtype=str`) para evitar perda de códigos de município ou escola antes da etapa de limpeza.
 - A Etapa 2 não faz limpeza pesada, padronização, consolidação histórica nem cálculo de indicador.
 - O resultado da etapa é um relatório de ingestão em `outputs/relatorios/relatorio_ingestao.csv`.
+## 2026-06-08 - Ajuste da Etapa 1 e Etapa 3: auditoria estrutural
+
+- A extração do ano passou a considerar o primeiro ano encontrado no caminho do arquivo, evitando classificar arquivos como `tx_rendimento_escolas_2010_19082011.xls` pelo ano da data de atualização do arquivo.
+- A geração do relatório de ingestão passou a coletar dimensões das planilhas sem carregar todas as linhas em memória, mantendo a etapa mais rápida e adequada para arquivos grandes.
+- A Etapa 3 foi definida como auditoria estrutural, sem limpeza, padronização, consolidação ou cálculo de indicadores.
+- A auditoria verifica abas disponíveis, aba efetivamente usada, linha de cabeçalho, colunas mínimas de identificação, colunas de taxas e arquivos possivelmente divididos por abas regionais.
+- Arquivos antigos sem aba `ESCOLAS`, especialmente aqueles organizados por regiões, recebem status de aviso para evitar consolidação histórica incorreta.
+- O resultado da etapa é `outputs/relatorios/relatorio_auditoria.csv`.
+
+## 2026-06-08 - Continuação da Etapa 3: auditoria por aba
+
+- A auditoria estrutural passou a gerar também `outputs/relatorios/relatorio_auditoria_abas.csv`, com uma linha por aba auditada.
+- Para arquivos com abas regionais, a auditoria por aba avalia todas as abas regionais, não apenas a primeira aba do arquivo.
+- Arquivos sem abas regionais continuam sendo auditados por suas abas disponíveis, normalmente a aba `ESCOLAS`.
+- Esta decisão ainda não consolida as abas; ela apenas cria evidência para definir a regra de combinação dos anos 2007 a 2011.
+- O dicionário de dados inicial foi documentado em `docs/dicionario_dados.md`, registrando campos canônicos, aliases encontrados e famílias de taxas.

@@ -4,8 +4,11 @@ from src.pipeline.config import (
     INVENTARIO_ARQUIVOS,
     PROJECT_ROOT,
     RAW_TAXAS_RENDIMENTO_DIR,
+    RELATORIO_AUDITORIA,
+    RELATORIO_AUDITORIA_ABAS,
     RELATORIO_INGESTAO,
 )
+from src.pipeline.auditoria import gerar_relatorio_auditoria, gerar_relatorio_auditoria_abas
 from src.pipeline.descoberta_arquivos import gerar_inventario_arquivos
 from src.pipeline.ingestao import gerar_relatorio_ingestao
 
@@ -36,6 +39,25 @@ def main() -> None:
     print(f"Relatório gerado: {caminho_relativo(RELATORIO_INGESTAO)}")
     print(f"Arquivos lidos com sucesso: {total_ingestao_ok}")
     print(f"Erros de leitura: {total_ingestao_erros}")
+
+    relatorio_auditoria = gerar_relatorio_auditoria()
+    relatorio_auditoria_abas = gerar_relatorio_auditoria_abas()
+    total_auditoria_ok = sum(1 for registro in relatorio_auditoria if registro["status"] == "ok")
+    total_auditoria_avisos = sum(1 for registro in relatorio_auditoria if registro["status"] == "aviso")
+    total_auditoria_erros = sum(1 for registro in relatorio_auditoria if registro["status"] == "erro")
+    total_abas_regionais = sum(
+        1 for registro in relatorio_auditoria_abas if registro["tipo_aba"] == "regional"
+    )
+
+    print()
+    print("Etapa 3 - Auditoria estrutural dos arquivos")
+    print(f"Relatório gerado: {caminho_relativo(RELATORIO_AUDITORIA)}")
+    print(f"Auditoria por aba gerada: {caminho_relativo(RELATORIO_AUDITORIA_ABAS)}")
+    print(f"Arquivos sem apontamentos: {total_auditoria_ok}")
+    print(f"Avisos: {total_auditoria_avisos}")
+    print(f"Erros de auditoria: {total_auditoria_erros}")
+    print(f"Abas auditadas: {len(relatorio_auditoria_abas)}")
+    print(f"Abas regionais auditadas: {total_abas_regionais}")
 
 
 if __name__ == "__main__":

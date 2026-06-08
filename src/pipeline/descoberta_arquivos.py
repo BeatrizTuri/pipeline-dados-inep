@@ -21,7 +21,7 @@ def extrair_ano(caminho: Path) -> str:
     anos = PADRAO_ANO.findall(caminho.as_posix())
     if not anos:
         return ""
-    return anos[-1]
+    return anos[0]
 
 
 def eh_arquivo_relevante(caminho: Path) -> bool:
