@@ -13,8 +13,8 @@ Este dicionário registra a leitura inicial das bases de Taxas de Rendimento Esc
 | `no_municipio` | `Nome do Município`, `NO_MUNICIPIO` | Nome do município. |
 | `co_entidade` | `Código da Escola`, `CO_ENTIDADE` | Código da escola. Deve ser preservado como texto na ingestão. |
 | `no_entidade` | `Nome da Escola`, `NO_ENTIDADE` | Nome da escola. |
-| `tipoloca` | `Localização`, `TIPOLOCA` | Localização da escola. Não aparece em todos os anos mais recentes. |
-| `dependad` | `Rede`, `DEPENDAD`, `NO_DEPENDENCIA` | Dependência administrativa/rede. |
+| `tipoloca` | `Localização`, `TIPOLOCA`, `NO_CATEGORIA` | Localização da escola. |
+| `dependad` | `Rede`, `DEPENDAD`, `Dependência Administrativa`, `NO_DEPENDENCIA` | Dependência administrativa/rede. |
 
 ## Famílias de taxas
 
@@ -30,3 +30,11 @@ Este dicionário registra a leitura inicial das bases de Taxas de Rendimento Esc
 - A partir de 2012, a maior parte dos arquivos possui aba `ESCOLAS`.
 - Os nomes das colunas mudam ao longo do tempo, então a limpeza deve mapear aliases para nomes canônicos antes da consolidação.
 - A Etapa 3 ainda não converte tipos, não trata valores ausentes e não calcula indicadores.
+
+## Saída da Etapa 4
+
+- A Etapa 4 gera arquivos anuais padronizados em `data/interim/taxas_rendimento_escolar_padronizada/`.
+- Cada arquivo anual preserva os campos canônicos de identificação, as colunas de taxa padronizadas por família e os metadados `fonte_arquivo`, `fonte_caminho` e `fonte_aba`.
+- As famílias de taxas são padronizadas com os prefixos `tap_`, `tre_` e `tab_`.
+- Valores textuais usados como ausentes nas planilhas, como `--`, são convertidos para valor ausente na base intermediária.
+- A Etapa 4 ainda não empilha todos os anos em uma base histórica única; isso fica reservado para a Etapa 5.

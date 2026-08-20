@@ -32,3 +32,24 @@
 - Resultado: implementada geração de `outputs/relatorios/relatorio_auditoria_abas.csv`, com contagem de linhas, colunas, colunas de identificação e colunas de taxas por aba.
 - Resultado adicional: criado dicionário inicial com campos canônicos, aliases encontrados e famílias de taxas.
 - Pendência: definir, na próxima etapa, se a ingestão consolidada deve combinar automaticamente as abas regionais de 2007 a 2011.
+
+## 2026-06-08 - Fechamento da Etapa 3
+
+- Arquivos alterados: `docs/decisoes_metodologicas.md`, `docs/diario_tecnico.md`.
+- Objetivo: encerrar formalmente a etapa de auditoria antes de iniciar limpeza e padronização.
+- Resultado: Etapa 3 considerada concluída para o recorte 2007 a 2024.
+- Evidências geradas: `outputs/relatorios/relatorio_auditoria.csv`, `outputs/relatorios/relatorio_auditoria_abas.csv` e `docs/dicionario_dados.md`.
+- Validação registrada: 18 arquivos relevantes, 18 arquivos lidos com sucesso, 43 abas auditadas, 30 abas regionais auditadas e 0 erros de auditoria.
+- Decisão: os anos 2007 a 2011 deverão ter todas as abas regionais lidas na etapa posterior; a Etapa 3 não executa essa combinação.
+- Próximo passo: iniciar a Etapa 4 de limpeza e padronização.
+
+## 2026-08-20 - Etapa 4: limpeza e padronização
+
+- Arquivos alterados: `src/pipeline/config.py`, `src/pipeline/limpeza.py`, `src/pipeline/auditoria.py`, `main.py`, `docs/dicionario_dados.md`, `docs/decisoes_metodologicas.md`, `docs/diario_tecnico.md`.
+- Objetivo: criar uma base intermediária anual com campos de identificação e taxas padronizados, sem consolidar ainda a série histórica final.
+- Resultado: implementada geração de arquivos Parquet anuais em `data/interim/taxas_rendimento_escolar_padronizada/`.
+- Resultado: implementada geração de `outputs/relatorios/relatorio_limpeza.csv`.
+- Resultado: os anos 2007 a 2011 passaram a combinar todas as abas regionais dentro de cada arquivo anual padronizado.
+- Ajuste técnico: a limpeza foi tornada idempotente, reutilizando Parquets anuais já existentes quando `sobrescrever=False`.
+- Validação registrada: 18 arquivos padronizados, 0 erros, 2.588.399 linhas padronizadas e 54 colunas de taxas por ano.
+- Próximo passo: iniciar a Etapa 5 de consolidação histórica da base padronizada.

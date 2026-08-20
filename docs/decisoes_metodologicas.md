@@ -34,3 +34,23 @@
 - Arquivos sem abas regionais continuam sendo auditados por suas abas disponíveis, normalmente a aba `ESCOLAS`.
 - Esta decisão ainda não consolida as abas; ela apenas cria evidência para definir a regra de combinação dos anos 2007 a 2011.
 - O dicionário de dados inicial foi documentado em `docs/dicionario_dados.md`, registrando campos canônicos, aliases encontrados e famílias de taxas.
+
+## 2026-06-08 - Fechamento da Etapa 3
+
+- A Etapa 3 fica encerrada como etapa de auditoria estrutural das bases de Taxas de Rendimento Escolar por escola no recorte de 2007 a 2024.
+- Os produtos finais da etapa são `outputs/relatorios/relatorio_auditoria.csv`, `outputs/relatorios/relatorio_auditoria_abas.csv` e o dicionário inicial em `docs/dicionario_dados.md`.
+- A auditoria confirmou que os arquivos de 2007 a 2011 estão organizados por abas regionais e devem ser tratados com leitura de todas essas abas na etapa posterior.
+- A auditoria confirmou variações de nomenclatura entre anos, incluindo campos de identificação e famílias de taxas com padrões diferentes.
+- A Etapa 3 não modifica dados brutos, não gera base padronizada, não consolida anos e não calcula indicadores.
+- A próxima etapa definida é a Etapa 4: limpeza e padronização, usando os aliases e achados documentados nesta auditoria.
+
+## 2026-08-20 - Etapa 4: limpeza e padronização
+
+- A Etapa 4 lê o inventário validado e gera uma base intermediária padronizada por ano em `data/interim/taxas_rendimento_escolar_padronizada/`.
+- Para os anos de 2007 a 2011, todas as abas regionais identificadas pela auditoria são lidas e combinadas dentro do arquivo anual correspondente.
+- Para os demais anos, a etapa lê a aba principal escolhida pela regra de ingestão, normalmente `ESCOLAS`.
+- Os campos de identificação são renomeados para nomes canônicos, como `co_entidade`, `no_entidade`, `tipoloca` e `dependad`.
+- As colunas de taxas são padronizadas por família com os prefixos `tap_`, `tre_` e `tab_`, preservando o formato amplo da base.
+- Marcadores textuais de ausência, como `--`, são convertidos para valor ausente na base intermediária.
+- A etapa gera `outputs/relatorios/relatorio_limpeza.csv` para registrar linhas, colunas, abas lidas, arquivo de saída e status por ano.
+- A Etapa 4 não gera a base histórica única; a consolidação de todos os anos fica definida como responsabilidade da Etapa 5.

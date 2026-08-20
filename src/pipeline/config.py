@@ -6,6 +6,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 RAW_TAXAS_RENDIMENTO_DIR = RAW_DIR / "taxas_rendimento_escolar"
+INTERIM_DIR = DATA_DIR / "interim"
+INTERIM_TAXAS_RENDIMENTO_DIR = INTERIM_DIR / "taxas_rendimento_escolar_padronizada"
 
 OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 RELATORIOS_DIR = OUTPUTS_DIR / "relatorios"
@@ -13,3 +15,4 @@ INVENTARIO_ARQUIVOS = RELATORIOS_DIR / "inventario_arquivos.csv"
 RELATORIO_INGESTAO = RELATORIOS_DIR / "relatorio_ingestao.csv"
 RELATORIO_AUDITORIA = RELATORIOS_DIR / "relatorio_auditoria.csv"
 RELATORIO_AUDITORIA_ABAS = RELATORIOS_DIR / "relatorio_auditoria_abas.csv"
+RELATORIO_LIMPEZA = RELATORIOS_DIR / "relatorio_limpeza.csv"

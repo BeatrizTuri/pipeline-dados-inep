@@ -37,8 +37,8 @@ COLUNAS_IDENTIFICACAO_ALIASES = {
     "no_municipio": {"no_municipio", "nome_do_municipio"},
     "co_entidade": {"co_entidade", "codigo_da_escola"},
     "no_entidade": {"no_entidade", "nome_da_escola"},
-    "tipoloca": {"tipoloca", "localizacao"},
-    "dependad": {"dependad", "rede", "no_dependencia"},
+    "tipoloca": {"tipoloca", "localizacao", "no_categoria"},
+    "dependad": {"dependad", "rede", "dependencia_administrativa", "no_dependencia"},
 }
 
 

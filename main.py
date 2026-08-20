@@ -7,10 +7,12 @@ from src.pipeline.config import (
     RELATORIO_AUDITORIA,
     RELATORIO_AUDITORIA_ABAS,
     RELATORIO_INGESTAO,
+    RELATORIO_LIMPEZA,
 )
 from src.pipeline.auditoria import gerar_relatorio_auditoria, gerar_relatorio_auditoria_abas
 from src.pipeline.descoberta_arquivos import gerar_inventario_arquivos
 from src.pipeline.ingestao import gerar_relatorio_ingestao
+from src.pipeline.limpeza import gerar_base_padronizada
 
 
 def caminho_relativo(caminho: Path) -> Path:
@@ -58,6 +60,22 @@ def main() -> None:
     print(f"Erros de auditoria: {total_auditoria_erros}")
     print(f"Abas auditadas: {len(relatorio_auditoria_abas)}")
     print(f"Abas regionais auditadas: {total_abas_regionais}")
+
+    relatorio_limpeza = gerar_base_padronizada()
+    total_limpeza_ok = sum(1 for registro in relatorio_limpeza if registro["status"] == "ok")
+    total_limpeza_erros = sum(1 for registro in relatorio_limpeza if registro["status"] == "erro")
+    total_linhas_padronizadas = sum(
+        int(registro["quantidade_linhas"] or 0)
+        for registro in relatorio_limpeza
+        if registro["status"] == "ok"
+    )
+
+    print()
+    print("Etapa 4 - Limpeza e padronização")
+    print(f"Relatório gerado: {caminho_relativo(RELATORIO_LIMPEZA)}")
+    print(f"Arquivos padronizados: {total_limpeza_ok}")
+    print(f"Erros de padronização: {total_limpeza_erros}")
+    print(f"Linhas padronizadas: {total_linhas_padronizadas}")
 
 
 if __name__ == "__main__":
