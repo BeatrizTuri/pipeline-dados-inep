@@ -1,0 +1,19 @@
+{
+  "files.exclude": {
+    "**/.pytest_cache": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "data/interim": true,
+    "data/processed": true,
+    "outputs/graficos": true,
+    "outputs/tabelas": true
+  },
+  "search.exclude": {
+    "**/.pytest_cache": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "data": true,
+    "outputs": true
+  }
+}

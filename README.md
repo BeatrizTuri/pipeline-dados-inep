@@ -18,3 +18,22 @@ Os arquivos oficiais baixados devem ser colocados em:
 
 ```text
 data/raw/taxas_rendimento_escolar/
+```
+
+## Estrutura simplificada
+
+Para entender o projeto rapidamente, consulte:
+
+- `docs/guia_estrutura_projeto.md`
+- `docs/diario_tecnico.md`
+- `docs/decisoes_metodologicas.md`
+
+As partes principais do projeto são:
+
+```text
+src/pipeline/    código das etapas da pipeline
+docs/            documentação do TCC
+data/            dados brutos e intermediários
+outputs/         relatórios gerados
+main.py          execução da pipeline
+```
