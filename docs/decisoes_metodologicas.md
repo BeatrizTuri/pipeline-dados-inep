@@ -54,3 +54,30 @@
 - Marcadores textuais de ausência, como `--`, são convertidos para valor ausente na base intermediária.
 - A etapa gera `outputs/relatorios/relatorio_limpeza.csv` para registrar linhas, colunas, abas lidas, arquivo de saída e status por ano.
 - A Etapa 4 não gera a base histórica única; a consolidação de todos os anos fica definida como responsabilidade da Etapa 5.
+
+## 2026-08-22 - Etapa 5: consolidação histórica
+
+- A Etapa 5 usa os arquivos Parquet anuais padronizados da Etapa 4 como entrada.
+- A saída consolidada é `data/processed/taxas_rendimento_escolar_consolidada.parquet`.
+- O relatório da etapa é `outputs/relatorios/relatorio_consolidacao.csv`.
+- Como as colunas de taxas variam entre períodos, a consolidação usa a união das colunas padronizadas e preenche com valor ausente as colunas não existentes em determinado ano.
+- Linhas sem `co_entidade` são descartadas da base consolidada, pois a unidade de análise definida é a escola.
+- A base consolidada preserva os campos de rastreabilidade `fonte_arquivo`, `fonte_caminho` e `fonte_aba`.
+- A etapa valida quantidade de linhas por ano, quantidade de escolas, abas de origem e duplicidades por `ano + co_entidade`.
+- A Etapa 5 não calcula indicadores; análises e indicadores ficam para etapa posterior.
+
+## 2026-09-24 - Mudança de escopo e camada analítica
+
+- A pipeline e a base histórica são a contribuição central do TCC. Um dashboard interativo será a aplicação futura. O índice de vulnerabilidade está suspenso; qualquer indicador derivado dependerá de metodologia validada.
+- A Etapa 5 passa a se chamar **Consolidação histórica e preparação da camada analítica**. As etapas 1 a 4 mantêm suas responsabilidades e sua implementação.
+- A decisão anterior de descartar linhas sem escola é substituída: todas as linhas anuais permanecem no histórico. As 75 linhas sem escola observadas na entrada são excluídas somente da camada analítica escolar. Textos de taxas dessas linhas são preservados em `taxas_textuais_origem`, pois há cabeçalhos auxiliares entre elas.
+- Histórico e camada analítica são wide. Um melt das 207 colunas históricas geraria 535.798.593 linhas incluindo ausentes; mesmo 54 métricas harmonizadas poderiam gerar 139.773.546. A camada wide mantém aproximadamente 2,59 milhões de registros e permite projetar somente as colunas necessárias.
+- As correspondências são específicas por período. Os cabeçalhos locais de 2018–2020 associam `f04` a anos finais e `f58` ao 1º ano, diferentemente de 2015–2017. Não interpretar códigos isoladamente nem por sua ordem física no Parquet.
+- São preservados os recortes de fundamental total, segmentos, anos/séries, médio total, séries e não seriado. Eles se sobrepõem e não são somáveis. Não inferir outras modalidades a partir dessas colunas.
+- Ano é inteiro, taxas são double e códigos são strings. Taxas fora da faixa e infinitos permanecem no histórico, mas ficam nulos na analítica. Textos inesperados em taxas de escolas identificadas bloqueiam a publicação.
+- A camada analítica normaliza `Particular` para `Privada`. As dimensões usam versões por conjunto de atributos, sem retroagir os atributos mais recentes. Os códigos e valores originais permanecem no histórico.
+- O particionamento é somente por ano, com um arquivo por partição. Particionar também por UF produziria até 486 combinações no recorte atual, sem evidência de benefício para consultas ainda não implementadas.
+- Não são produzidas agregações municipais, ponderações, indicadores compostos ou médias apresentadas como taxas oficiais.
+- Duplicatas e conflitos são reportados, sem deduplicação automática. Repetições de ano/escola identificada bloqueiam a publicação. Registros sem escola não participam dessa chave.
+- A escrita usa lotes e arquivos temporários; as dimensões são deduplicadas em SQLite temporário. Há restauração das saídas anteriores em exceções de publicação, mas não garantia transacional contra interrupção abrupta do sistema durante a troca de vários arquivos.
+- O CSV existente é ampliado; um JSON separado documenta os schemas. Uma tentativa com erro não publica uma base parcial e mantém o status de falha no relatório.

@@ -1,59 +1,79 @@
 # Guia da estrutura do projeto
 
-Este projeto segue uma estrutura simples: código da pipeline, documentação do TCC, dados e saídas geradas.
+Este projeto segue uma estrutura simples: codigo da pipeline, documentacao do TCC, dados e saidas geradas.
 
 ## Pastas principais
 
 ```text
 pipeline-dados-inep/
-├── src/pipeline/      Código da pipeline
-├── docs/              Documentação técnica e metodológica do TCC
-├── notebooks/         Explorações manuais e estudos complementares
-├── data/              Dados brutos e bases intermediárias
-├── outputs/           Relatórios, tabelas e gráficos gerados
-├── main.py            Executa as etapas da pipeline
-├── requirements.txt   Dependências do projeto
-└── README.md          Visão geral e instruções rápidas
+|-- src/pipeline/       Codigo da pipeline
+|-- docs/               Documentacao tecnica e metodologica do TCC
+|-- data/               Dados brutos, intermediarios e processados
+|-- outputs/relatorios/ Relatorios gerados pela pipeline
+|-- main.py             Executa as etapas da pipeline
+|-- requirements.txt    Dependencias do projeto
+`-- README.md           Visao geral e instrucoes rapidas
 ```
 
 ## O que olhar primeiro
 
-Para entender o andamento do TCC, leia nesta ordem:
+- `main.py`: ponto de entrada. E o arquivo que executa as etapas ja implementadas.
+- `src/pipeline/`: onde ficam os modulos da pipeline.
+- `docs/decisoes_metodologicas.md`: registro das decisoes tomadas durante o desenvolvimento.
+- `docs/diario_tecnico.md`: historico tecnico do que foi feito em cada etapa.
+- `docs/dicionario_dados.md`: explicacao dos campos e saidas do projeto.
 
-1. `docs/diario_tecnico.md`
-2. `docs/decisoes_metodologicas.md`
-3. `docs/dicionario_dados.md`
-4. `main.py`
-5. arquivos em `src/pipeline/`
+## Etapas implementadas
 
-## Etapas da pipeline
+1. Descoberta dos arquivos
+   - Codigo: `src/pipeline/descoberta_arquivos.py`
+   - Saida: `outputs/relatorios/inventario_arquivos.csv`
 
-| Etapa | Arquivo principal | Saída principal |
-| --- | --- | --- |
-| 1. Descoberta | `src/pipeline/descoberta_arquivos.py` | `outputs/relatorios/inventario_arquivos.csv` |
-| 2. Ingestão | `src/pipeline/ingestao.py` | `outputs/relatorios/relatorio_ingestao.csv` |
-| 3. Auditoria | `src/pipeline/auditoria.py` | `outputs/relatorios/relatorio_auditoria.csv` |
-| 4. Limpeza e padronização | `src/pipeline/limpeza.py` | `outputs/relatorios/relatorio_limpeza.csv` |
-| 5. Consolidação | `src/pipeline/consolidacao.py` | ainda não implementada |
+2. Ingestao
+   - Codigo: `src/pipeline/ingestao.py`
+   - Saida: `outputs/relatorios/relatorio_ingestao.csv`
+
+3. Auditoria
+   - Codigo: `src/pipeline/auditoria.py`
+   - Saidas:
+     - `outputs/relatorios/relatorio_auditoria.csv`
+     - `outputs/relatorios/relatorio_auditoria_abas.csv`
+
+4. Limpeza e padronizacao
+   - Codigo: `src/pipeline/limpeza.py`
+   - Saidas:
+     - `data/interim/taxas_rendimento_escolar_padronizada/`
+     - `outputs/relatorios/relatorio_limpeza.csv`
+
+5. Consolidacao historica e preparacao da camada analitica
+   - Codigo: `src/pipeline/consolidacao.py`
+   - Saidas:
+     - `data/processed/taxas_rendimento_escolar_consolidada.parquet`
+     - `outputs/relatorios/relatorio_consolidacao.csv`
+     - `data/processed/dashboard/taxas/ano=<ano>/taxas.parquet`
+     - `data/processed/dashboard/dim_escolas.parquet`
+     - `data/processed/dashboard/dim_municipios.parquet`
+     - `data/processed/dashboard/dim_metricas.parquet`
+     - `outputs/relatorios/schema_consolidacao.json`
+   - Apoio: `metricas.py` (catalogo por periodo), `validacao_consolidacao.py` (tipos e integridade) e `camada_analitica.py` (tabela escolar e dimensoes).
+   - `main.py --etapa 5` executa somente esta etapa, usando os Parquets anuais existentes.
 
 ## Pastas que podem parecer confusas
 
-- `.venv/`: ambiente Python local. É necessário para rodar o projeto, mas não faz parte do código do TCC.
-- `__pycache__/` e `.pytest_cache/`: caches automáticos do Python e do pytest. Podem ser apagados sem afetar o projeto.
-- `data/raw/`: arquivos originais do INEP. Não devem ser editados manualmente pela pipeline.
-- `data/interim/`: bases intermediárias geradas pela pipeline.
-- `outputs/`: relatórios e saídas geradas automaticamente.
-- `references/`: pasta opcional para referências bibliográficas; está vazia no momento.
-- `tests/`: pasta reservada para testes automatizados; está vazia no momento.
+- `.venv/`: ambiente virtual local do Python. Nao faz parte da analise do TCC.
+- `data/raw/`: dados originais baixados manualmente. Devem ser preservados.
+- `data/interim/`: dados intermediarios gerados pela pipeline.
+- `data/processed/`: bases finais processadas pela pipeline.
+- `outputs/relatorios/`: relatorios de controle, auditoria e validacao.
+- `notebooks/`: nao existe mais no momento; recriar somente se houver analise exploratoria real.
+- `tests/`: testes automatizados da Etapa 5, com dados artificiais e diretorios temporarios. Executar com `python -m pytest -q`.
 
-## Regra prática
+## Regra pratica
 
-Para desenvolver o TCC, concentre-se em:
+Para entender o projeto, leia nesta ordem:
 
-```text
-src/pipeline/
-docs/
-main.py
-```
-
-As pastas `data/` e `outputs/` são importantes para execução e validação, mas são geradas ou preenchidas a partir dos dados locais.
+1. `README.md`
+2. `docs/guia_estrutura_projeto.md`
+3. `main.py`
+4. `docs/diario_tecnico.md`
+5. `docs/decisoes_metodologicas.md`

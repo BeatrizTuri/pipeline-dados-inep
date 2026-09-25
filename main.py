@@ -1,15 +1,21 @@
+import argparse
+import logging
 from pathlib import Path
 
 from src.pipeline.config import (
+    BASE_TAXAS_RENDIMENTO_CONSOLIDADA,
+    DASHBOARD_DIR,
     INVENTARIO_ARQUIVOS,
     PROJECT_ROOT,
     RAW_TAXAS_RENDIMENTO_DIR,
     RELATORIO_AUDITORIA,
     RELATORIO_AUDITORIA_ABAS,
+    RELATORIO_CONSOLIDACAO,
     RELATORIO_INGESTAO,
     RELATORIO_LIMPEZA,
 )
 from src.pipeline.auditoria import gerar_relatorio_auditoria, gerar_relatorio_auditoria_abas
+from src.pipeline.consolidacao import gerar_base_consolidada
 from src.pipeline.descoberta_arquivos import gerar_inventario_arquivos
 from src.pipeline.ingestao import gerar_relatorio_ingestao
 from src.pipeline.limpeza import gerar_base_padronizada
@@ -19,7 +25,7 @@ def caminho_relativo(caminho: Path) -> Path:
     return caminho.resolve().relative_to(PROJECT_ROOT)
 
 
-def main() -> None:
+def executar_etapas_iniciais() -> None:
     registros = gerar_inventario_arquivos()
     total_ok = sum(1 for registro in registros if registro["status"] == "ok")
     total_avisos = sum(1 for registro in registros if registro["status"] == "aviso")
@@ -76,6 +82,48 @@ def main() -> None:
     print(f"Arquivos padronizados: {total_limpeza_ok}")
     print(f"Erros de padronização: {total_limpeza_erros}")
     print(f"Linhas padronizadas: {total_linhas_padronizadas}")
+
+
+def executar_etapa_5() -> bool:
+    relatorio_consolidacao = gerar_base_consolidada()
+    registros_anuais = [registro for registro in relatorio_consolidacao if registro["ano"] != "TOTAL"]
+    registro_total = next(
+        (registro for registro in relatorio_consolidacao if registro["ano"] == "TOTAL"),
+        {},
+    )
+    total_consolidacao_ok = sum(1 for registro in registros_anuais if registro["status"] == "ok")
+    total_consolidacao_avisos = sum(1 for registro in registros_anuais if registro["status"] == "aviso")
+    total_consolidacao_erros = sum(1 for registro in registros_anuais if registro["status"] == "erro")
+
+    print()
+    print("Etapa 5 - Consolidação histórica e preparação da camada analítica")
+    print(f"Status: {registro_total.get('status', 'erro')}")
+    if registro_total.get("publicado"):
+        print(f"Base gerada: {caminho_relativo(BASE_TAXAS_RENDIMENTO_CONSOLIDADA)}")
+        print(f"Camada analítica: {caminho_relativo(DASHBOARD_DIR)}")
+    else:
+        print(f"Saídas não publicadas: {registro_total.get('observacao', '')}")
+    print(f"Relatório gerado: {caminho_relativo(RELATORIO_CONSOLIDACAO)}")
+    print(f"Anos consolidados sem apontamentos: {total_consolidacao_ok}")
+    print(f"Avisos: {total_consolidacao_avisos}")
+    print(f"Erros de consolidação: {total_consolidacao_erros}")
+    print(f"Linhas de entrada: {registro_total.get('quantidade_linhas_entrada', '0')}")
+    print(f"Linhas descartadas: {registro_total.get('quantidade_linhas_descartadas', '0')}")
+    print(f"Linhas consolidadas: {registro_total.get('quantidade_linhas_consolidadas', '0')}")
+    print(f"Colunas consolidadas: {registro_total.get('quantidade_colunas_consolidadas', '0')}")
+    print(f"Linhas analíticas: {registro_total.get('linhas_analiticas', '0')}")
+    return registro_total.get("status") != "erro"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Pipeline de dados educacionais do INEP")
+    parser.add_argument("--etapa", choices=["5"], help="Executa somente a Etapa 5 sobre os Parquets anuais existentes.")
+    args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    if args.etapa != "5":
+        executar_etapas_iniciais()
+    if not executar_etapa_5():
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
