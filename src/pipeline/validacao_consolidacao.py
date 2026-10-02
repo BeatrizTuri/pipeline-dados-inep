@@ -71,6 +71,7 @@ class Auditoria:
     contagens: dict[str, int] = field(default_factory=lambda: dict(
         quantidade_linhas_entrada=0, quantidade_linhas_consolidadas=0,
         quantidade_linhas_descartadas=0, escolas_ausentes=0, municipios_ausentes=0,
+        codigos_escola_invalidos=0, codigos_municipio_invalidos=0,
         ufs_invalidas=0, valores_invalidos=0, valores_textuais=0,
         duplicidades_ano_escola=0, duplicatas_exatas=0, conflitos_ano_escola=0))
     escolas: set[str] = field(default_factory=set)
@@ -85,6 +86,10 @@ class Auditoria:
         c["quantidade_linhas_consolidadas"] += len(dados)
         c["escolas_ausentes"] += int(dados.co_entidade.isna().sum())
         c["municipios_ausentes"] += int(dados.co_municipio.isna().sum())
+        for coluna, tamanho, contador in (("co_entidade", 8, "codigos_escola_invalidos"),
+                                           ("co_municipio", 7, "codigos_municipio_invalidos")):
+            valores = dados[coluna]
+            c[contador] += int((valores.notna() & ~valores.str.fullmatch(f"[0-9]{{{tamanho}}}", na=False)).sum())
         c["ufs_invalidas"] += int((~dados.sg_uf.isin(UF_VALIDAS)).sum())
         c["valores_invalidos"] += int(mascara_taxas_invalidas(dados[colunas_taxas(dados)]).sum().sum())
         c["valores_textuais"] += textos

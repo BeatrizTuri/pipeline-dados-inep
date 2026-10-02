@@ -42,7 +42,7 @@ main.py          execução da pipeline
 
 ## Fluxo e saídas
 
-Dados brutos → descoberta → ingestão → auditoria → limpeza e padronização anual → **consolidação histórica e preparação da camada analítica** → dashboard futuro.
+Dados brutos → descoberta → ingestão → auditoria → limpeza e padronização anual → **consolidação histórica e preparação da camada analítica** → banco de dados futuro → Power BI futuro.
 
 - A Etapa 4 mantém a representação canônica anual em `data/interim/taxas_rendimento_escolar_padronizada/`.
 - A Etapa 5 gera `data/processed/taxas_rendimento_escolar_consolidada.parquet`, preservando linhas, colunas de origem e rastreabilidade.
@@ -63,3 +63,7 @@ python -m pytest -q        # testes com dados artificiais
 ```
 
 A Etapa 5 processa lotes, sem concatenar toda a série em memória. As saídas são preparadas em diretório temporário e substituídas após validação. Uma falha mantém os produtos anteriores e gera status `erro` no relatório; o comando retorna código de saída 1. Consulte sempre `TOTAL.publicado` antes de usar os arquivos como resultado da última execução.
+
+O contrato para consumo dos Parquets está em [docs/dicionario_dados.md](docs/dicionario_dados.md): tipos, chaves, dimensões versionadas, métricas, leitura das partições e regras de qualidade. A validação anterior à publicação verifica também as referências às dimensões. O diretório `dashboard/` contém dados, não uma aplicação. PostgreSQL, Power BI e indicadores derivados não estão implementados.
+
+Etapa de processamento e preparação encerrada em 01/10/2026 para o recorte 2007–2024: 34 testes aprovados, 2.588.399 linhas históricas e 2.588.324 linhas analíticas. A execução real publicou as saídas com os avisos conhecidos, detalhados em [docs/diario_tecnico.md](docs/diario_tecnico.md).

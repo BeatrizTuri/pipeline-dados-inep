@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from src.pipeline.camada_analitica import gerar_camada_analitica
+from src.pipeline.camada_analitica import gerar_camada_analitica, validar_relacionamentos
 from src.pipeline.config import (
     BASE_TAXAS_RENDIMENTO_CONSOLIDADA, INTERIM_TAXAS_RENDIMENTO_DIR,
     RELATORIO_CONSOLIDACAO, TAMANHO_LOTE, COMPRESSAO_PARQUET, DASHBOARD_DIR, SCHEMA_CONSOLIDACAO,
@@ -74,6 +74,8 @@ def inspecionar_entradas(arquivos: list[Path], relatorio: list[dict]) -> dict[in
             registro.update(quantidade_linhas_entrada=parquet.metadata.num_rows,
                             quantidade_colunas_originais=len(schema),
                             colunas_ausentes=";".join(sorted(set(IDENTIFICACAO + RASTREABILIDADE).difference(schema.names))),
+                            colunas_desconhecidas=";".join(sorted(set(schema.names).difference(
+                                IDENTIFICACAO + RASTREABILIDADE + list(mapa_metricas(int(ano)))))),
                             metricas_ausentes=";".join(sorted(set(mapa_metricas(int(ano))).difference(schema.names))),
                             metricas_desconhecidas=";".join(sorted(set(colunas_taxas(schema.names)).difference(mapa_metricas(int(ano))))))
         except (OSError, ValueError, pa.ArrowException) as erro:
@@ -184,10 +186,11 @@ def gerar_base_consolidada(
                     registro.update(auditoria.resumo())
                     registro["quantidade_colunas_ausentes"] = len(set(schema.names).difference(original.names))
                     avisos = any(auditoria.contagens[c] for c in (
-                        "escolas_ausentes", "municipios_ausentes", "ufs_invalidas", "valores_invalidos", "valores_textuais"))
+                        "escolas_ausentes", "municipios_ausentes", "ufs_invalidas", "valores_invalidos", "valores_textuais",
+                        "codigos_escola_invalidos", "codigos_municipio_invalidos"))
                     registro["status"] = "aviso" if (
                         avisos or registro["colunas_ausentes"] or registro["metricas_ausentes"]
-                        or registro["metricas_desconhecidas"]) else "ok"
+                        or registro["colunas_desconhecidas"]) else "ok"
                     if auditoria.contagens["duplicidades_ano_escola"]:
                         registro.update(status="erro", observacao="Chave ano/escola repetida; camada analítica bloqueada.")
                     for chave, valor in auditoria.contagens.items():
@@ -211,6 +214,8 @@ def gerar_base_consolidada(
                 if registro["linhas_analiticas"] != registro["quantidade_linhas_consolidadas"] - registro["escolas_ausentes"]:
                     raise ValueError("Contagem analítica divergente.")
             registrar_schemas(historico, temporario / "dashboard", temporario / "schema.json")
+            validar_relacionamentos(temporario / "dashboard")
+            total["relacionamentos_validados"] = True
             publicar([(historico, caminho_saida), (temporario / "dashboard", dashboard),
                       (temporario / "schema.json", schema_saida)], temporario)
             total.update(publicado=True, linhas_analiticas=sum(contagens.values()),

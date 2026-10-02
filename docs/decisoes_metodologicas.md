@@ -81,3 +81,12 @@
 - Duplicatas e conflitos são reportados, sem deduplicação automática. Repetições de ano/escola identificada bloqueiam a publicação. Registros sem escola não participam dessa chave.
 - A escrita usa lotes e arquivos temporários; as dimensões são deduplicadas em SQLite temporário. Há restauração das saídas anteriores em exceções de publicação, mas não garantia transacional contra interrupção abrupta do sistema durante a troca de vários arquivos.
 - O CSV existente é ampliado; um JSON separado documenta os schemas. Uma tentativa com erro não publica uma base parcial e mantém o status de falha no relatório.
+
+## 2026-10-01 - Contrato e validações de fechamento da Etapa 5
+
+- Mantidos o fluxo, os layouts, a harmonização de métricas e as regras de preservação histórica. Não foram alteradas as etapas 1 a 4.
+- Códigos textuais fora do formato esperado (oito dígitos para escola, sete para município) geram contagens e aviso, sem correção ou descarte. A validação é sintática e não certifica existência em cadastro oficial.
+- Colunas desconhecidas, incluindo metadados extras, são explicitamente listadas e preservadas no histórico.
+- Os Parquets preparados são conferidos antes da publicação quanto à unicidade das dimensões, nulabilidade das referências, existência dos IDs e correspondência dos códigos. Falha bloqueia a publicação e preserva os produtos anteriores.
+- O contrato para a futura persistência é composto pelos Parquets, pelo schema JSON, pelo relatório de qualidade e pelo dicionário de dados. A dimensão de métricas descreve colunas wide por período, sem junção direta por uma chave de métrica na fato.
+- O SQLite temporário já existente continua sendo apenas apoio à deduplicação de atributos durante o processamento e é removido ao final. Não foi implementada persistência em banco, integração com PostgreSQL ou aplicação de BI.

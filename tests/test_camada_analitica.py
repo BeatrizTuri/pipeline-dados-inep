@@ -3,6 +3,7 @@ import pyarrow.dataset as ds
 import pytest
 
 from src.pipeline.consolidacao import gerar_base_consolidada
+from src.pipeline.camada_analitica import validar_relacionamentos
 from src.pipeline.metricas import mapa_metricas, dimensao_metricas
 
 
@@ -37,9 +38,15 @@ def test_dimensoes_temporais_particoes_reexecucao(tmp_path):
                                sg_uf="SP", no_regiao="Sudeste", tipoloca="Urbana", dependad="Particular",
                                **{coluna: "93"})])
         d.to_parquet(entrada / f"taxas_rendimento_{ano}.parquet", index=False)
+    ids_anteriores = None
     for _ in range(2):
         r = gerar_base_consolidada(entrada, tmp_path / "saida/historico.parquet", tmp_path / "relatorio.csv")
         assert r[-1]["publicado"] and r[-1]["linhas_analiticas"] == 2
+        ids = ds.dataset(tmp_path / "saida/dashboard/taxas", format="parquet", partitioning="hive").to_table(
+            columns=["ano", "id_escola", "id_municipio"]).to_pandas()
+        if ids_anteriores is not None:
+            pd.testing.assert_frame_equal(ids, ids_anteriores)
+        ids_anteriores = ids
     pasta = tmp_path / "saida/dashboard"
     assert len(list((pasta / "taxas").rglob("*.parquet"))) == 2
     dados = ds.dataset(pasta / "taxas", format="parquet", partitioning="hive").to_table().to_pandas()
@@ -55,3 +62,26 @@ def test_dimensoes_temporais_particoes_reexecucao(tmp_path):
     assert set(escolas.dependad) == {"Privada"}
     unidos = dados.merge(escolas[["id_escola", "no_entidade"]], on="id_escola", validate="many_to_one", suffixes=("", "_dim"))
     assert unidos.no_entidade.tolist() == unidos.no_entidade_dim.tolist() == ["Antiga", "Nova"]
+
+
+@pytest.mark.parametrize("nome", ["escola", "municipio"])
+@pytest.mark.parametrize("falha", ["orfao", "duplicado", "nulo", "codigo"])
+def test_rejeita_relacionamentos_invalidos(tmp_path, nome, falha):
+    (tmp_path / "taxas/ano=2024").mkdir(parents=True)
+    pd.DataFrame([dict(id_escola="e", co_entidade="00123456", id_municipio="m", co_municipio="0012345")]).to_parquet(
+        tmp_path / "taxas/ano=2024/taxas.parquet", index=False)
+    for tipo, chave, codigo, valor in [("escola", "e", "co_entidade", "00123456"),
+                                       ("municipio", "m", "co_municipio", "0012345")]:
+        d = pd.DataFrame([{f"id_{tipo}": chave, codigo: valor}])
+        if tipo == nome:
+            if falha == "orfao":
+                d = d.iloc[:0]
+            elif falha == "duplicado":
+                d = pd.concat([d, d])
+            elif falha == "nulo":
+                d[f"id_{tipo}"] = None
+            else:
+                d[codigo] = "outro"
+        d.to_parquet(tmp_path / f"dim_{tipo}s.parquet", index=False)
+    with pytest.raises(ValueError):
+        validar_relacionamentos(tmp_path)

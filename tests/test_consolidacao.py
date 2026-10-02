@@ -35,6 +35,7 @@ def test_multiplos_anos_schema_codigos_e_ausencias(tmp_path):
     assert relatorio[-1]["publicado"]
     assert relatorio[-1]["anos_processados"] == "2023;2024"
     assert "tre_fun" in relatorio[1]["metricas_ausentes"]
+    assert relatorio[0]["colunas_desconhecidas"] == "extra"
     h = pd.read_parquet(tmp_path / "saida/historico.parquet")
     assert len(h) == 2
     assert h.co_entidade.tolist() == ["00123456", "00000002"]
@@ -168,3 +169,34 @@ def test_rollback_publicacao(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         consolidacao.publicar([(origem1, destino1), (origem2, destino2)], tmp_path)
     assert destino1.read_text() == "antigo1" and destino2.read_text() == "antigo2"
+
+
+def test_codigos_malformados_reportados_sem_correcao(tmp_path):
+    gravar(tmp_path / "entrada", co_entidade="ABC12345", co_municipio="123")
+    r = executar(tmp_path)
+    assert r[-1]["publicado"] and r[-1]["status"] == "aviso"
+    assert r[-1]["codigos_escola_invalidos"] == r[-1]["codigos_municipio_invalidos"] == 1
+    h = pd.read_parquet(tmp_path / "saida/historico.parquet")
+    assert h.co_entidade.iloc[0] == "ABC12345" and h.co_municipio.iloc[0] == "123"
+
+
+def test_dimensao_invalida_bloqueia_e_preserva_publicacao(tmp_path, monkeypatch):
+    gravar(tmp_path / "entrada")
+    assert executar(tmp_path)[-1]["relacionamentos_validados"]
+    anteriores = {p: p.read_bytes() for p in (tmp_path / "saida").rglob("*.parquet")}
+    schema = tmp_path / "relatorios/schema_consolidacao.json"
+    anteriores[schema] = schema.read_bytes()
+    gerar = consolidacao.gerar_camada_analitica
+
+    def corromper(historico, destino, colunas):
+        contagens = gerar(historico, destino, colunas)
+        p = destino / "dim_escolas.parquet"
+        d = pd.read_parquet(p)
+        d.iloc[:0].to_parquet(p, index=False)
+        return contagens
+
+    monkeypatch.setattr(consolidacao, "gerar_camada_analitica", corromper)
+    r = executar(tmp_path)
+    assert r[-1]["status"] == "erro" and not r[-1]["publicado"]
+    assert "Referência inválida" in r[-1]["observacao"]
+    assert all(p.read_bytes() == conteudo for p, conteudo in anteriores.items())

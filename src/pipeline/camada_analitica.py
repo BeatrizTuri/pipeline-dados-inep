@@ -63,6 +63,28 @@ def exportar_dimensao(conexao: sqlite3.Connection, nome: str, colunas: list[str]
             escritor.write_table(pa.Table.from_pandas(lote, schema=schema, preserve_index=False))
 
 
+def validar_relacionamentos(destino: Path) -> None:
+    """Confere os Parquets fechados antes da publicação, sem carregar a fato inteira."""
+    for nome, codigo in (("escola", "co_entidade"), ("municipio", "co_municipio")):
+        chave = f"id_{nome}"
+        dimensao = pq.ParquetFile(destino / f"dim_{nome}s.parquet").read(columns=[chave, codigo]).to_pandas()
+        if dimensao[chave].isna().any() or not dimensao[chave].is_unique or dimensao[codigo].isna().any():
+            raise ValueError(f"Dimensão {nome}: chave nula/duplicada ou código ausente.")
+        codigos = dict(zip(dimensao[chave], dimensao[codigo], strict=True))
+        for arquivo in sorted((destino / "taxas").rglob("*.parquet")):
+            for lote in pq.ParquetFile(arquivo).iter_batches(batch_size=TAMANHO_LOTE, columns=[chave, codigo]):
+                dados = lote.to_pandas()
+                ids, origem = dados[chave], dados[codigo]
+                if (nome == "escola" and ids.isna().any()) or not ids.isna().equals(origem.isna()):
+                    raise ValueError(f"Referência nula inconsistente: {chave} em {arquivo.parent.name}.")
+                presentes = ids.notna()
+                for identificador, valor in dados.loc[presentes].itertuples(index=False, name=None):
+                    if identificador not in codigos:
+                        raise ValueError(f"Referência inválida: {chave} em {arquivo.parent.name}.")
+                    if codigos[identificador] != valor:
+                        raise ValueError(f"Código divergente da dimensão: {chave} em {arquivo.parent.name}.")
+
+
 def gerar_camada_analitica(historico: Path, destino: Path,
                           colunas_por_ano: dict[int, list[str]]) -> dict[int, int]:
     """Lê o histórico uma vez e escreve um arquivo por ano, sem melt."""

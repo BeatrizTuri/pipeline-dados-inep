@@ -57,6 +57,8 @@ pipeline-dados-inep/
      - `outputs/relatorios/schema_consolidacao.json`
    - Apoio: `metricas.py` (catalogo por periodo), `validacao_consolidacao.py` (tipos e integridade) e `camada_analitica.py` (tabela escolar e dimensoes).
    - `main.py --etapa 5` executa somente esta etapa, usando os Parquets anuais existentes.
+   - O contrato para consumo externo está em `docs/dicionario_dados.md`; conferir também `TOTAL.publicado`, status e avisos no relatório. As referências às dimensões são validadas antes da publicação.
+   - A pasta `dashboard/` contém somente Parquets. Persistência em banco e Power BI são etapas futuras.
 
 ## Pastas que podem parecer confusas
 

@@ -93,3 +93,34 @@ O campo `ano` é armazenado no caminho Hive da partição; ao ler o dataset comp
 O CSV registra uma linha por arquivo e uma linha `TOTAL`, com anos, arquivos encontrados/processados, linhas, escolas e municípios únicos, UFs, ausências, taxas inválidas/textuais, colunas ausentes/desconhecidas, duplicidades e status. As duplicidades são contadas como ocorrências excedentes; `duplicatas_exatas` compara o conteúdo sem proveniência e `conflitos_ano_escola` compara o conteúdo de uma chave repetida com sua primeira ocorrência. Chaves repetidas de escolas identificadas bloqueiam a publicação, sem deduplicação arbitrária.
 
 `publicado=False` indica que as saídas anteriores não foram atualizadas: contagens eventualmente presentes se referem à tentativa de processamento, não a uma nova base disponível. Lacunas entre o menor e o maior ano encontrado geram aviso; não há uma lista de anos obrigatórios imposta à entrada. O JSON registra os schemas finais e a convenção de particionamento. O relatório de falha pode ser mais recente que o schema e as bases da última execução bem-sucedida.
+
+## Contrato para consumo externo
+
+O contrato vigente cobre os layouts de 2007–2024. Todos os Parquets anuais encontrados são inspecionados; anos fora dos layouts conhecidos bloqueiam a publicação até revisão do catálogo. Os anos efetivamente publicados constam em `TOTAL.anos_processados`.
+
+| Produto | Granularidade e chaves | Tipos e nulabilidade |
+| --- | --- | --- |
+| Histórico | Todas as linhas anuais, inclusive auxiliares; não impor chave primária escolar ao histórico inteiro. | `ano` int32 não nulo; códigos e metadados string; taxas double. Demais campos podem ser nulos. |
+| `taxas/` | Uma linha por (`ano`, `co_entidade`); referências por `id_escola` e `id_municipio`. | 64 colunas físicas: oito campos de identificação string, dois IDs string e 54 taxas double. `ano` int32 é recuperado da partição, totalizando 65 colunas lógicas. Escola e seu ID são obrigatórios; município e seu ID podem ser nulos em conjunto. Taxas e demais atributos admitem nulos. |
+| `dim_escolas` | Uma versão por `id_escola`, único e não nulo. `co_entidade` pode repetir entre versões. | Nove colunas string: `id_escola`, `co_entidade`, `no_entidade`, `co_municipio`, `no_municipio`, `sg_uf`, `no_regiao`, `tipoloca`, `dependad`. Código escolar obrigatório; outros atributos podem ser nulos. |
+| `dim_municipios` | Uma versão por `id_municipio`, único e não nulo. `co_municipio` pode repetir entre versões. | Cinco colunas string: `id_municipio`, `co_municipio`, `no_municipio`, `sg_uf`, `no_regiao`. Código municipal obrigatório; demais atributos podem ser nulos. |
+| `dim_metricas` | Catálogo de aliases; chave (`ano_inicio`, `codigo_original`). | `ano_inicio` e `ano_fim` int64; demais sete campos textuais, descritos acima (`large_string` no schema Arrow do ambiente validado; conferir o JSON). O catálogo gerado não contém nulos. |
+
+`dim_metricas` não é uma dimensão ligada por ID a cada linha da fato wide: descreve as colunas de taxas por período. Não fazer junção apenas por `coluna_analitica`, que se repete nos cinco layouts.
+
+Os IDs são o SHA-256 hexadecimal do JSON UTF-8 dos atributos ordenados, sem espaços separadores, com caracteres Unicode preservados e ausências representadas por `null`. Para escola, a ordem é `co_entidade`, `no_entidade`, `co_municipio`, `no_municipio`, `sg_uf`, `no_regiao`, `tipoloca`, `dependad`; para município, `co_municipio`, `no_municipio`, `sg_uf`, `no_regiao`. A harmonização de `Particular` ocorre antes do cálculo. Esses IDs representam conjuntos de atributos, não intervalos de vigência: o mesmo conjunto que reaparece reutiliza o ID.
+
+Antes de publicar, a pipeline relê os IDs e códigos nos Parquets: exige unicidade e ausência de nulos nas chaves dimensionais, correspondência dos códigos e existência de todas as referências não nulas. Referência escolar nula ou nulabilidade municipal inconsistente bloqueia a publicação. O sucesso fica registrado em `TOTAL.relacionamentos_validados=True`. Junções por esses IDs são muitos-para-um e não multiplicam registros.
+
+`codigos_escola_invalidos` conta códigos não nulos que não tenham oito dígitos ASCII; `codigos_municipio_invalidos` aplica sete dígitos. São verificações de formato, não consultas a cadastros oficiais. Geram aviso e preservam os textos nas duas camadas, sem completar zeros, substituir ou excluir registros. Ausentes têm contadores próprios. `colunas_desconhecidas` lista toda coluna fora da identificação, proveniência e catálogo do ano, inclusive taxas desconhecidas; essas colunas permanecem no histórico e geram aviso.
+
+Exemplo de leitura de um ano, preservando tipos e recuperando a coluna de partição:
+
+```python
+import pyarrow.dataset as ds
+
+taxas = ds.dataset("data/processed/dashboard/taxas", format="parquet", partitioning="hive")
+ano_2024 = taxas.to_table(filter=ds.field("ano") == 2024)
+```
+
+O consumidor deve conferir `TOTAL.publicado`, `TOTAL.status` e os avisos; o schema JSON descreve os tipos físicos efetivamente publicados. Status `aviso` permite consumo com as ressalvas registradas, enquanto `erro` indica tentativa não publicada. As saídas protegidas por restauração em erros de I/O não constituem transação resistente a desligamento abrupto; executar uma publicação por vez. A Etapa 4 reutiliza arquivos anuais existentes por padrão: mudanças na fonte exigem sua regeneração explícita antes de executar a Etapa 5.
