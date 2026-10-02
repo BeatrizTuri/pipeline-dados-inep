@@ -92,3 +92,18 @@
 - Reexecução: os hashes SHA-256 dos 22 Parquets publicados (histórico, 18 partições e três dimensões) são idênticos aos anteriores. Confirmada leitura Hive com 65 colunas lógicas, `ano` int32 e filtro de 2024 retornando 128.096 linhas.
 - Qualidade: zero códigos malformados, zero duplicidades/conflitos de ano e escola identificada, nenhuma coluna desconhecida ou métrica esperada ausente, e todas as referências dimensionais válidas. Permanecem 75 linhas sem escola/município/UF, 1.758 células textuais auxiliares, oito taxas inválidas em 2007 e 48 ocorrências excedentes de registros auxiliares repetidos. Os 17 avisos anuais são aceitáveis para este fechamento porque os problemas são reportados, preservados no histórico e tratados conforme o contrato: linhas sem escola não entram na analítica e taxas fora da faixa ficam nulas nela, sem fabricar valores válidos.
 - Conclusão: encerrada a etapa de processamento, consolidação histórica e preparação da camada analítica para o recorte e layouts validados. Os produtos estão prontos para futura persistência e consumo externo, observadas as regras de qualidade documentadas. Não foi iniciada integração com banco de dados ou Power BI. A restauração por exceções de I/O continua sem garantia transacional contra desligamento abrupto durante a publicação.
+
+## 2026-10-02 - Início do planejamento da Etapa 6
+
+- Escopo: apenas documentação da modelagem relacional e estratégia de carga da camada analítica em PostgreSQL. O histórico completo permanece somente em Parquet, conforme decisão do projeto.
+- Criado `docs/modelo_banco_dados.md`; atualizados apenas este diário, `docs/guia_estrutura_projeto.md` e `docs/decisoes_metodologicas.md`. Alterações anteriores da Etapa 5 presentes no diretório de trabalho foram preservadas.
+- Inspeção de leitura confirmou 2.588.324 linhas analíticas em 18 partições, 515.873 versões escolares (227.868 códigos), 11.245 versões municipais (5.570 códigos) e 270 registros de catálogo. Todas as versões escolares atuais possuem correspondência municipal pelo conjunto completo de atributos.
+- Identificadas as ressalvas de normalização para escola sem código municipal, necessidade de derivar a FK ausente no Parquet escolar e necessidade de conferir a igualdade municipal entre fato e escola. Proposta conservadora mantém os atributos da origem na dimensão escolar e acrescenta a referência municipal.
+- Documentados tipos, PKs/FKs/UNIQUEs, índices, 54 métricas, controle de carga, captura consistente da origem, staging, validações, publicação transacional, recuperação de falhas e idempotência. Consultada documentação oficial do PostgreSQL, referenciada no desenho.
+- Não houve execução da pipeline, instalação de dependências, conexão com banco ou alteração de código/Parquets. Não foram executados testes de PostgreSQL; o modelo é uma proposta a revisar antes da implementação.
+
+## 2026-10-02 - Desenho da Etapa 6 aprovado
+
+- Registrada a aprovação da FK municipal opcional com preservação dos quatro atributos geográficos em `dim_escola`. Atualizados este diário, `docs/decisoes_metodologicas.md` e `docs/modelo_banco_dados.md`.
+- Definidos a preparação inicial do banco local `inep`, o uso futuro de `psycopg` com `COPY` e a estrutura prevista para persistência e arquivos SQL. Nenhuma instalação ou implementação foi realizada nesta atualização.
+- A verificação local não encontrou `psql` ou `pg_ctl` no PATH, serviços com nome contendo PostgreSQL nem a pasta padrão `C:/Program Files/PostgreSQL`. Isso não exclui uma instalação em outro local ou ambiente.

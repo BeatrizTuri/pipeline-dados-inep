@@ -60,6 +60,12 @@ pipeline-dados-inep/
    - O contrato para consumo externo está em `docs/dicionario_dados.md`; conferir também `TOTAL.publicado`, status e avisos no relatório. As referências às dimensões são validadas antes da publicação.
    - A pasta `dashboard/` contém somente Parquets. Persistência em banco e Power BI são etapas futuras.
 
+## Etapa 6 — planejamento, ainda sem implementação
+
+- `docs/modelo_banco_dados.md`: proposta de tabelas, tipos, chaves, índices, staging, validação e rollback para persistir a camada analítica em PostgreSQL.
+- O histórico completo continuará somente em Parquet. A integração PostgreSQL e o consumo por Power BI ainda não existem.
+- O planejamento não altera comandos, código, dependências ou produtos da Etapa 5.
+
 ## Pastas que podem parecer confusas
 
 - `.venv/`: ambiente virtual local do Python. Nao faz parte da analise do TCC.

@@ -90,3 +90,17 @@
 - Os Parquets preparados são conferidos antes da publicação quanto à unicidade das dimensões, nulabilidade das referências, existência dos IDs e correspondência dos códigos. Falha bloqueia a publicação e preserva os produtos anteriores.
 - O contrato para a futura persistência é composto pelos Parquets, pelo schema JSON, pelo relatório de qualidade e pelo dicionário de dados. A dimensão de métricas descreve colunas wide por período, sem junção direta por uma chave de métrica na fato.
 - O SQLite temporário já existente continua sendo apenas apoio à deduplicação de atributos durante o processamento e é removido ao final. Não foi implementada persistência em banco, integração com PostgreSQL ou aplicação de BI.
+
+## 2026-10-02 - Etapa 6: arquitetura definida e modelagem proposta
+
+- Decisão de arquitetura do projeto: o histórico completo permanece apenas em Parquet; PostgreSQL receberá a camada analítica para consulta e futuro consumo por Power BI.
+- O desenho para revisão está em [modelo_banco_dados.md](modelo_banco_dados.md). Propõe dimensões versionadas, fato wide com PK (`ano`, `co_entidade`), catálogo por alias/período e controle de cargas. IDs existentes e códigos textuais serão preservados; taxas serão double precision anuláveis.
+- Recomenda-se inicialmente preservar os atributos municipais na dimensão escolar além da FK derivada, pois o contrato permite atributos parciais sem código municipal. A normalização completa exige decisão adicional antes de implementação, embora os dados atuais possuam correspondência municipal em todas as versões escolares.
+- Propõe-se carga completa via staging validada e publicação em transação única, com substituição por DELETE/INSERT, controle de execução e rollback. A consistência municipal entre fato e escola deve ser validada explicitamente, inclusive para NULL.
+- Estas são propostas documentais, não integração implementada ou autorização para mudar a Etapa 5. Nenhuma conexão, tabela SQL, dependência ou transformação dos Parquets foi criada.
+
+## 2026-10-02 - Aprovação do desenho da Etapa 6
+
+- Aprovada a manutenção de `id_municipio` como FK opcional em `dim_escola`, preservando também `co_municipio`, `no_municipio`, `sg_uf` e `no_regiao` como atributos históricos e rastreáveis da versão escolar. A redundância será conferida na carga; a normalização total fica para eventual revisão futura baseada em evidências e sem perda de informação.
+- O desenho está aprovado para implementação posterior. A preparação do PostgreSQL local e do banco `inep` precederá o código de conexão. A carga utilizará `psycopg` e `COPY` em lotes, staging, validações e publicação transacional, com duas execuções para comprovar idempotência antes de conectar Power BI.
+- O registro inicial da execução continuará fora da transação de publicação; o sucesso será confirmado junto aos dados e a falha registrada depois do rollback. A aprovação não modifica a Etapa 5 nem cria infraestrutura nesta atualização documental.
