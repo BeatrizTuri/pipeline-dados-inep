@@ -24,17 +24,19 @@ data/raw/taxas_rendimento_escolar/
 
 ## Estrutura simplificada
 
-Para entender o projeto rapidamente, consulte:
+Documentação por assunto:
 
-- `docs/guia_estrutura_projeto.md`
-- `docs/diario_tecnico.md`
-- `docs/decisoes_metodologicas.md`
+- [Estrutura e etapas](docs/guia_estrutura_projeto.md): responsabilidades dos módulos e produtos gerados.
+- [Metodologia de processamento](docs/metodologia.md): regras de preservação, harmonização e qualidade.
+- [Dicionário e contrato de dados](docs/dicionario_dados.md): campos, tipos, métricas e relacionamentos.
+- [Fontes e preparação da entrada](docs/fontes_dados.md): obtenção e organização dos arquivos.
+- [Modelo PostgreSQL](docs/modelo_banco_dados.md): estrutura relacional e estratégia da futura carga.
 
 As partes principais do projeto são:
 
 ```text
 src/pipeline/    código das etapas da pipeline
-docs/            documentação do TCC
+docs/            documentação explicativa do projeto
 data/            dados brutos e intermediários
 outputs/         relatórios gerados
 main.py          execução da pipeline
@@ -59,11 +61,24 @@ Com as dependências de `requirements.txt` instaladas no ambiente Python:
 ```sh
 python main.py             # todas as etapas
 python main.py --etapa 5   # somente consolidação e camada analítica
-python -m pytest -q        # testes com dados artificiais
 ```
 
 A Etapa 5 processa lotes, sem concatenar toda a série em memória. As saídas são preparadas em diretório temporário e substituídas após validação. Uma falha mantém os produtos anteriores e gera status `erro` no relatório; o comando retorna código de saída 1. Consulte sempre `TOTAL.publicado` antes de usar os arquivos como resultado da última execução.
 
-O contrato para consumo dos Parquets está em [docs/dicionario_dados.md](docs/dicionario_dados.md): tipos, chaves, dimensões versionadas, métricas, leitura das partições e regras de qualidade. A validação anterior à publicação verifica também as referências às dimensões. O diretório `dashboard/` contém dados, não uma aplicação. PostgreSQL, Power BI e indicadores derivados não estão implementados.
+O contrato para consumo dos Parquets está em [docs/dicionario_dados.md](docs/dicionario_dados.md): tipos, chaves, dimensões versionadas, métricas, leitura das partições e regras de qualidade. A validação anterior à publicação verifica também as referências às dimensões. O diretório `dashboard/` contém dados, não uma aplicação. A carga no PostgreSQL, o Power BI e indicadores derivados ainda não estão implementados.
 
-Etapa de processamento e preparação encerrada em 01/10/2026 para o recorte 2007–2024: 34 testes aprovados, 2.588.399 linhas históricas e 2.588.324 linhas analíticas. A execução real publicou as saídas com os avisos conhecidos, detalhados em [docs/diario_tecnico.md](docs/diario_tecnico.md).
+A etapa de processamento e preparação está validada para 2007–2024: 34 testes aprovados, 2.588.399 linhas históricas e 2.588.324 linhas analíticas. Os avisos conhecidos e seu tratamento estão descritos na [metodologia](docs/metodologia.md#qualidade-e-limites-dos-dados).
+
+## Etapa 6 — configuração PostgreSQL
+
+O ambiente local utiliza PostgreSQL 18, banco `inep` e usuário `inep_app`. As cinco tabelas foram criadas e validadas manualmente fora do código. A estrutura está definida em [schema.sql](src/pipeline/banco/schema.sql); ainda não existe carga de dados implementada.
+
+Com a `.venv` ativada, instale as dependências:
+
+```sh
+python -m pip install -r requirements.txt
+```
+
+Use `.env.example` como modelo para criar manualmente `.env` na raiz do projeto. Preencha `POSTGRES_PASSWORD` apenas nesse arquivo local. Os demais campos previstos são host `localhost`, porta `5432`, banco `inep` e usuário `inep_app`. `.env` já está ignorado pelo Git e não deve ser versionado; `.env.example` contém somente o modelo, sem senha real.
+
+Os testes automatizados e o script de verificação de conexão são mantidos apenas no ambiente de desenvolvimento e não acompanham o repositório. As evidências de validação mencionadas neste README se referem às verificações locais realizadas.

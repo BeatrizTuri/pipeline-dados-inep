@@ -1,6 +1,6 @@
-# Etapa 6 — Planejamento da persistência em PostgreSQL
+# Modelo PostgreSQL e estratégia de carga
 
-Data: 02/10/2026. Estado: desenho aprovado para implementação posterior, incluindo a decisão municipal. A Etapa 5 permanece encerrada. Este documento não cria tabelas, conexão, migração ou dependências. O próximo passo operacional é preparar o PostgreSQL local e o banco `inep`, antes de implementar a carga.
+Este documento explica o modelo relacional da camada analítica e os requisitos da futura carga. A estrutura das cinco tabelas está definida em [schema.sql](../src/pipeline/banco/schema.sql). O carregador, a staging e a publicação transacional ainda não estão implementados. As instruções de configuração estão no [README](../README.md#etapa-6--configuração-postgresql); os testes de infraestrutura são mantidos apenas no ambiente local.
 
 ## Escopo e fontes
 
@@ -10,9 +10,9 @@ O histórico completo `data/processed/taxas_rendimento_escolar_consolidada.parqu
 
 Referências locais: [contrato de dados](dicionario_dados.md), [catálogo executável](../src/pipeline/metricas.py), [geração das dimensões](../src/pipeline/camada_analitica.py) e `outputs/relatorios/schema_consolidacao.json`. Os Parquets existentes não serão alterados pela carga.
 
-## Diagnóstico de compatibilidade
+## Compatibilidade com os Parquets
 
-A inspeção somente de leitura em 02/10/2026 confirmou 18 partições (2007–2024), 2.588.324 linhas analíticas, 515.873 versões escolares para 227.868 códigos distintos, 11.245 versões municipais para 5.570 códigos distintos e 270 registros de catálogo. A fato possui 54 métricas float64, identificadores textuais e ano int32 recuperado das partições Hive. Esses números são referência desta publicação, não constantes a impor a futuras cargas.
+A publicação validada contém 18 partições (2007–2024), 2.588.324 linhas analíticas, 515.873 versões escolares para 227.868 códigos distintos, 11.245 versões municipais para 5.570 códigos distintos e 270 registros de catálogo. A fato possui 54 métricas float64, identificadores textuais e ano int32 recuperado das partições Hive. Esses números descrevem a base de referência, não constantes a impor a futuras cargas.
 
 O modelo inicial é compatível com os dados publicados, com os seguintes cuidados:
 
@@ -23,15 +23,15 @@ O modelo inicial é compatível com os dados publicados, com os seguintes cuidad
 5. O catálogo possui vários registros para uma mesma coluna analítica, separados por alias/período. Uma junção da fato wide a esse catálogo apenas por nome de coluna multiplicaria linhas.
 6. Os códigos malformados são avisos no contrato atual, não motivo de descarte. Não acrescentar restrições de tamanho ou formato aos códigos INEP que rejeitem dados permitidos pela Etapa 5. Essa regra não se aplica aos hashes, cujo formato é definido pela própria pipeline.
 
-### Decisão aprovada sobre a normalização municipal
+### Atributos municipais da versão escolar
 
-Decisão aprovada em 02/10/2026: `id_municipio` será FK opcional na dimensão escolar; `co_municipio`, `no_municipio`, `sg_uf` e `no_regiao` permanecerão na versão escolar como informação histórica e rastreável. Isso preserva todo o contrato, inclusive os casos de município ausente, sem inventar município, hash ou valor sentinela. A redundância é controlada pelas validações de carga; inconsistências não autorizam reparo ou descarte silencioso.
+`id_municipio` é FK opcional na dimensão escolar; `co_municipio`, `no_municipio`, `sg_uf` e `no_regiao` permanecem na versão escolar como informação histórica e rastreável. Isso preserva todo o contrato, inclusive os casos de município ausente, sem inventar município, hash ou valor sentinela. A redundância deverá ser conferida pelas validações de carga; inconsistências não autorizam reparo ou descarte silencioso.
 
 A normalização total poderá ser reavaliada quando os dados demonstrarem que a relação é sempre válida, com tratamento sem perda para todos os casos admitidos pelo contrato e aprovação explícita da mudança. A remoção dos atributos não está aprovada. A decisão atual não altera os Parquets nem permite descartar escolas com dados parciais.
 
-## Modelo relacional proposto
+## Modelo relacional
 
-Os nomes abaixo representam tabelas futuras, não objetos existentes. `text` preserva códigos, nomes e hashes sem padding ou conversão numérica. Todos os IDs dimensionais serão `text` com verificação do formato `^[0-9a-f]{64}$`; NULL será permitido apenas nas referências municipais. Nenhum código receberá preenchimento de zeros ou normalização adicional.
+As tabelas abaixo são definidas pelo script SQL e precisam ser criadas em cada ambiente antes de uma futura carga. `text` preserva códigos, nomes e hashes sem padding ou conversão numérica. Todos os IDs dimensionais usam `text` com verificação do formato `^[0-9a-f]{64}$`; entre os IDs, NULL é permitido apenas nas referências municipais. Nenhum código recebe preenchimento de zeros ou normalização adicional.
 
 ```mermaid
 erDiagram
@@ -198,7 +198,7 @@ Serializar cargas com um lock de aplicação no PostgreSQL, por exemplo advisory
 
 Inserir o controle `em_execucao` e confirmar esse registro em transação própria antes da carga. Usar staging temporária isolada por sessão, uma tabela para cada produto, mantendo todos os atributos de origem e preservando linhas entre commits durante a preparação. Não compartilhar staging entre execuções.
 
-O futuro carregador lerá Parquet em lotes e enviará os valores por `COPY FROM STDIN` em formato suportado, com codificação e representação de NULL explícitas. PostgreSQL COPY não recebe arquivos Parquet diretamente. Não descartar erros de conversão nem confundir string vazia com NULL. Nenhum driver, comando COPY ou conversor é implementado nesta tarefa. [COPY](https://www.postgresql.org/docs/current/sql-copy.html).
+O futuro carregador lerá Parquet em lotes e enviará os valores por `COPY FROM STDIN` em formato suportado, com codificação e representação de NULL explícitas. PostgreSQL COPY não recebe arquivos Parquet diretamente. Não descartar erros de conversão nem confundir string vazia com NULL. O driver está disponível para o teste de conexão, mas o envio dos lotes e sua conversão ainda não estão implementados. [COPY](https://www.postgresql.org/docs/current/sql-copy.html).
 
 ### 3. Validar staging
 
@@ -239,14 +239,17 @@ Reexecutar a mesma origem substituirá o conteúdo pelo mesmo conjunto de linhas
 
 Leitores não enxergam alterações não confirmadas, mas consultas distintas sob Read Committed podem atravessar a fronteira de um commit. Uma futura atualização do BI que precise de uma única versão em várias consultas deverá usar uma transação de leitura Repeatable Read quando suportada, ou ser coordenada fora da janela de publicação. Não prometer consistência de toda uma atualização do Power BI apenas pela atomicidade do commit. [Isolamento de transações](https://www.postgresql.org/docs/current/transaction-iso.html).
 
-## Sequência aprovada e critérios para a implementação posterior
+## Estado da implementação e critérios de aceitação
 
-- Registrar o planejamento aprovado no Git antes da implementação. Se houver alterações pendentes da Etapa 5, separá-las do commit de planejamento da Etapa 6.
-- Preparar primeiro o PostgreSQL local e criar o banco `inep`; depois criar o schema das cinco tabelas e a staging, implementar a carga em lotes com `psycopg` e `COPY`, validar contagens e referências e publicar transacionalmente. `pandas.to_sql()` não será o mecanismo principal de carga.
-- Estrutura prevista, ainda não criada: `src/pipeline/persistencia.py`, `src/pipeline/banco/schema.sql` e `src/pipeline/banco/queries.sql`.
-- Registrar o início em `controle_carga` antes da carga, em transação própria; registrar sucesso junto à publicação e falha após rollback, conforme descrito acima. A aprovação do desenho não altera essas garantias.
-- Definir ambiente e versão de PostgreSQL, credenciais, permissões e orçamento de espaço para staging, dados e WAL; nada disso está configurado.
-- Implementar em tarefa posterior a carga, restrições e verificações, com testes de duplicidade, nulos, versões históricas, códigos com zeros, falha após DELETE e durante inserção, concorrência e resultado indeterminado do commit.
-- Demonstrar duas cargas da mesma origem com conteúdo idêntico e controles distintos; simular falha e provar que a carga anterior permanece ativa.
-- Conectar o Power BI somente depois da implementação e validação da persistência.
-- Registrar tempos e contagens reais do banco. Nesta tarefa não foram executados SQL, testes em PostgreSQL ou carga da Etapa 6. A inspeção dos Parquets confirma compatibilidade dos dados atuais, não funcionamento de uma integração ainda inexistente.
+Estão disponíveis o script de criação da estrutura SQL e o teste de conexão Python. Criar banco e usuário e executar o schema são procedimentos externos à pipeline. O teste de conexão exige configuração local e não carrega nem valida dados nas tabelas.
+
+A implementação da persistência deverá:
+
+- Criar staging temporária e transferir lotes usando `psycopg` e `COPY`, com validação antes da publicação. `pandas.to_sql()` não será o mecanismo principal.
+- Registrar o início em `controle_carga` em transação própria; confirmar sucesso junto aos dados e registrar falha após rollback.
+- Respeitar permissões e limites de espaço para staging, tabelas e WAL definidos para o ambiente de destino.
+- Testar duplicidades, nulos, versões históricas, códigos com zeros, falhas após DELETE e durante inserção, concorrência e resultado indeterminado do commit.
+- Demonstrar duas cargas da mesma origem com conteúdo idêntico e controles distintos; provar que uma carga com falha mantém a publicação anterior ativa.
+- Registrar tempos e contagens reais antes de conectar o Power BI.
+
+Essas garantias descrevem o comportamento exigido do carregador futuro; não representam uma carga já implementada ou testada.

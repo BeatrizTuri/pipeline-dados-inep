@@ -1,13 +1,13 @@
 # Guia da estrutura do projeto
 
-Este projeto segue uma estrutura simples: codigo da pipeline, documentacao do TCC, dados e saidas geradas.
+Este guia apresenta os módulos, as responsabilidades de cada etapa e os produtos disponíveis. As instruções de instalação e execução estão no [README](../README.md).
 
 ## Pastas principais
 
 ```text
 pipeline-dados-inep/
 |-- src/pipeline/       Codigo da pipeline
-|-- docs/               Documentacao tecnica e metodologica do TCC
+|-- docs/               Documentacao explicativa do projeto
 |-- data/               Dados brutos, intermediarios e processados
 |-- outputs/relatorios/ Relatorios gerados pela pipeline
 |-- main.py             Executa as etapas da pipeline
@@ -19,9 +19,9 @@ pipeline-dados-inep/
 
 - `main.py`: ponto de entrada. E o arquivo que executa as etapas ja implementadas.
 - `src/pipeline/`: onde ficam os modulos da pipeline.
-- `docs/decisoes_metodologicas.md`: registro das decisoes tomadas durante o desenvolvimento.
-- `docs/diario_tecnico.md`: historico tecnico do que foi feito em cada etapa.
-- `docs/dicionario_dados.md`: explicacao dos campos e saidas do projeto.
+- [Metodologia](metodologia.md): regras de processamento, preservação e qualidade.
+- [Dicionário de dados](dicionario_dados.md): campos, tipos e relacionamentos das saídas.
+- [Fontes](fontes_dados.md): organização dos arquivos de entrada.
 
 ## Etapas implementadas
 
@@ -60,11 +60,13 @@ pipeline-dados-inep/
    - O contrato para consumo externo está em `docs/dicionario_dados.md`; conferir também `TOTAL.publicado`, status e avisos no relatório. As referências às dimensões são validadas antes da publicação.
    - A pasta `dashboard/` contém somente Parquets. Persistência em banco e Power BI são etapas futuras.
 
-## Etapa 6 — planejamento, ainda sem implementação
+## Etapa 6 — estrutura SQL e configuração
 
-- `docs/modelo_banco_dados.md`: proposta de tabelas, tipos, chaves, índices, staging, validação e rollback para persistir a camada analítica em PostgreSQL.
-- O histórico completo continuará somente em Parquet. A integração PostgreSQL e o consumo por Power BI ainda não existem.
-- O planejamento não altera comandos, código, dependências ou produtos da Etapa 5.
+- [Modelo do banco](modelo_banco_dados.md): tabelas, tipos, chaves, índices e estratégia da futura carga.
+- `src/pipeline/banco/schema.sql`: criação inicial das cinco tabelas PostgreSQL, constraints e índices.
+- `.env.example`: modelo de configuração local para PostgreSQL, sem senha real. As instruções estão no README.
+- O histórico completo permanece somente em Parquet. Ainda não existem carregador, staging, COPY ou publicação de dados no banco implementados. O Power BI também é uma etapa futura.
+- A execução das etapas 1–5 não depende do PostgreSQL.
 
 ## Pastas que podem parecer confusas
 
@@ -73,8 +75,7 @@ pipeline-dados-inep/
 - `data/interim/`: dados intermediarios gerados pela pipeline.
 - `data/processed/`: bases finais processadas pela pipeline.
 - `outputs/relatorios/`: relatorios de controle, auditoria e validacao.
-- `notebooks/`: nao existe mais no momento; recriar somente se houver analise exploratoria real.
-- `tests/`: testes automatizados da Etapa 5, com dados artificiais e diretorios temporarios. Executar com `python -m pytest -q`.
+- `tests/` e o script `scripts/testar_conexao_postgres.py` são recursos locais de desenvolvimento, ignorados pelo Git e não distribuídos com o repositório.
 
 ## Regra pratica
 
@@ -83,5 +84,6 @@ Para entender o projeto, leia nesta ordem:
 1. `README.md`
 2. `docs/guia_estrutura_projeto.md`
 3. `main.py`
-4. `docs/diario_tecnico.md`
-5. `docs/decisoes_metodologicas.md`
+4. [Metodologia](metodologia.md)
+5. [Dicionário de dados](dicionario_dados.md)
+6. [Modelo do banco](modelo_banco_dados.md)

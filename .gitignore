@@ -10,3 +10,7 @@ outputs/
 
 .DS_Store
 .env
+
+/docs/registros_locais/
+/tests/
+/scripts/testar_conexao_postgres.py
