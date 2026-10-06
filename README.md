@@ -265,20 +265,6 @@ Execute o exemplo na raiz do projeto com o ambiente Python configurado.
 
 Se os dados já estão processados e carregados, você pode começar pelas consultas. Execute a etapa 5 quando precisar reconsolidar os anuais existentes e a etapa 6 quando precisar publicar a camada analítica no banco.
 
-## Problemas frequentes
-
-| Situação | O que conferir |
-| --- | --- |
-| Nenhum Excel relevante encontrado | Extração dos ZIPs, pasta de entrada, nomes/caminhos e inventário. |
-| Arquivo não processado | Relatórios de ingestão, auditoria e limpeza. |
-| Consolidação sem publicação | Linha TOTAL, status, observações e validações da etapa 5. |
-| Configuração PostgreSQL ausente | `.env` na raiz e preenchimento dos cinco campos. |
-| Falha de conexão/carga | Serviço PostgreSQL, banco, usuário, senha local, permissões, tabelas e SQLSTATE no relatório. |
-| Produtos da etapa 5 ausentes | Dimensões, partições, relatório de consolidação e schema JSON. |
-| Outra carga em execução | Aguarde seu término antes de executar novamente. |
-| Redução de anos/contagens | Revise a origem; o carregador bloqueia substituição por uma base reduzida. |
-| Consulta retorna linhas duplicadas | Verifique se as junções usam IDs de versão e se o catálogo foi associado corretamente. |
-
 ## Organização e documentação
 
 ```text
@@ -302,35 +288,3 @@ Documentação complementar:
 - [Dicionário e contrato de dados](docs/dicionario_dados.md).
 - [Modelo PostgreSQL e garantias da carga](docs/modelo_banco_dados.md).
 - [Diário técnico e resultados reais](docs/diario_tecnico.md).
-
-## Testes e resultados validados
-
-Os testes, `pytest.ini` e os scripts de desenvolvimento são mantidos **somente no ambiente local**, ignorados pelo Git. Não acompanham o repositório; os comandos abaixo se aplicam ao ambiente que possui esses arquivos.
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest -q
-```
-
-Para incluir os testes de integração, que criam e removem schemas descartáveis no banco configurado:
-
-```powershell
-$env:INEP_TEST_INTEGRATION = '1'
-.\.venv\Scripts\python.exe -m pytest -q
-Remove-Item Env:INEP_TEST_INTEGRATION
-```
-
-A validação documentada tem **72 testes aprovados com integração**; sem integração, **54 aprovados e 18 pulados**. As duas cargas completas tiveram conteúdo idêntico, uma única carga ativa e origem preservada. Os testes verificaram também rollback e reconciliação de resposta perdida ao COMMIT.
-
-| Resultado da publicação validada | Quantidade |
-| --- | ---: |
-| Linhas históricas em Parquet | 2.588.399 |
-| Linhas analíticas no Parquet e PostgreSQL | 2.588.324 |
-| Versões escolares | 515.873 |
-| Versões municipais | 11.245 |
-| Registros de catálogo | 270 |
-| Métricas harmonizadas | 54 |
-| Período | 2007–2024 |
-
-Esses valores descrevem a base validada, não metas impostas a qualquer entrada. A diferença de 75 linhas corresponde a registros sem escola identificada, preservados no histórico e excluídos da camada analítica. Os avisos da origem e seus tratamentos estão descritos na metodologia.
-
-A conferência Parquet × PostgreSQL encontrou **zero duplicidades, FKs órfãs, inconsistências municipais ou taxas inválidas**. Durações totais das cargas: **530,679 s** e **569,995 s**. UUIDs, resultados e limites estão no diário técnico; as evidências locais estão em `outputs/relatorios/`.
