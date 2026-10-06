@@ -25,7 +25,7 @@ def caminho_relativo(caminho: Path) -> Path:
     return caminho.resolve().relative_to(PROJECT_ROOT)
 
 
-def executar_etapas_iniciais() -> None:
+def executar_etapas_iniciais(ate: int = 4) -> None:
     registros = gerar_inventario_arquivos()
     total_ok = sum(1 for registro in registros if registro["status"] == "ok")
     total_avisos = sum(1 for registro in registros if registro["status"] == "aviso")
@@ -37,6 +37,8 @@ def executar_etapas_iniciais() -> None:
     print(f"Arquivos relevantes: {total_ok}")
     print(f"Avisos: {total_avisos}")
     print(f"Erros: {total_erros}")
+    if ate == 1:
+        return
 
     relatorio_ingestao = gerar_relatorio_ingestao()
     total_ingestao_ok = sum(1 for registro in relatorio_ingestao if registro["status"] == "ok")
@@ -47,6 +49,8 @@ def executar_etapas_iniciais() -> None:
     print(f"Relatório gerado: {caminho_relativo(RELATORIO_INGESTAO)}")
     print(f"Arquivos lidos com sucesso: {total_ingestao_ok}")
     print(f"Erros de leitura: {total_ingestao_erros}")
+    if ate == 2:
+        return
 
     relatorio_auditoria = gerar_relatorio_auditoria()
     relatorio_auditoria_abas = gerar_relatorio_auditoria_abas()
@@ -66,6 +70,8 @@ def executar_etapas_iniciais() -> None:
     print(f"Erros de auditoria: {total_auditoria_erros}")
     print(f"Abas auditadas: {len(relatorio_auditoria_abas)}")
     print(f"Abas regionais auditadas: {total_abas_regionais}")
+    if ate == 3:
+        return
 
     relatorio_limpeza = gerar_base_padronizada()
     total_limpeza_ok = sum(1 for registro in relatorio_limpeza if registro["status"] == "ok")
@@ -117,9 +123,26 @@ def executar_etapa_5() -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Pipeline de dados educacionais do INEP")
-    parser.add_argument("--etapa", choices=["5"], help="Executa somente a Etapa 5 sobre os Parquets anuais existentes.")
+    parser.add_argument("--etapa", choices=["1", "2", "3", "4", "5", "6"],
+                        help="1–4: executa até a etapa escolhida; 5 ou 6: executa somente a etapa escolhida.")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    if args.etapa == "6":
+        from src.pipeline.persistencia import executar_persistencia
+        resultado = executar_persistencia()
+        print("Etapa 6 - Persistência PostgreSQL")
+        print(f"Execução: {resultado['id_execucao']}")
+        print(f"Status: {resultado['status']}")
+        print(f"Duração: {resultado['duracao_segundos']} segundos")
+        print("Relatório: outputs/relatorios/relatorio_persistencia_postgresql.json")
+        if resultado["status"] != "sucesso":
+            print(resultado.get("mensagem_erro", "Carga não confirmada."))
+            raise SystemExit(1)
+        print(f"Linhas publicadas: {resultado['quantidade_linhas']}")
+        return
+    if args.etapa in ("1", "2", "3", "4"):
+        executar_etapas_iniciais(int(args.etapa))
+        return
     if args.etapa != "5":
         executar_etapas_iniciais()
     if not executar_etapa_5():

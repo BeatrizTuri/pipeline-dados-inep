@@ -58,14 +58,18 @@ pipeline-dados-inep/
    - Apoio: `metricas.py` (catalogo por periodo), `validacao_consolidacao.py` (tipos e integridade) e `camada_analitica.py` (tabela escolar e dimensoes).
    - `main.py --etapa 5` executa somente esta etapa, usando os Parquets anuais existentes.
    - O contrato para consumo externo está em `docs/dicionario_dados.md`; conferir também `TOTAL.publicado`, status e avisos no relatório. As referências às dimensões são validadas antes da publicação.
-   - A pasta `dashboard/` contém somente Parquets. Persistência em banco e Power BI são etapas futuras.
+   - A pasta `dashboard/` contém somente Parquets. A Etapa 6 persiste esses dados; Power BI é uma etapa futura.
 
-## Etapa 6 — estrutura SQL e configuração
+## Etapa 6 — persistência PostgreSQL
 
-- [Modelo do banco](modelo_banco_dados.md): tabelas, tipos, chaves, índices e estratégia da futura carga.
+- [Modelo do banco](modelo_banco_dados.md): tabelas, tipos, chaves, índices e estratégia de carga.
 - `src/pipeline/banco/schema.sql`: criação inicial das cinco tabelas PostgreSQL, constraints e índices.
 - `.env.example`: modelo de configuração local para PostgreSQL, sem senha real. As instruções estão no README.
-- O histórico completo permanece somente em Parquet. Ainda não existem carregador, staging, COPY ou publicação de dados no banco implementados. O Power BI também é uma etapa futura.
+- `src/pipeline/persistencia.py`: captura e manifesto, leitura em lotes, COPY para staging temporária, validações e publicação transacional com rollback e controle de carga.
+- `main.py --etapa 6`: consome os produtos existentes da Etapa 5 sem executar as etapas anteriores.
+- `outputs/relatorios/relatorio_persistencia_postgresql.json` e `persistencia_<UUID>.json`: resultado atual e histórico local por execução.
+- `tests/test_persistencia.py` e `pytest.ini` (somente no ambiente local): testes de entrada e testes opcionais com PostgreSQL em schemas descartáveis, incluindo idempotência e rollback.
+- O histórico completo permanece somente em Parquet. O PostgreSQL recebe exclusivamente a camada analítica. Power BI é uma etapa futura.
 - A execução das etapas 1–5 não depende do PostgreSQL.
 
 ## Pastas que podem parecer confusas
@@ -75,7 +79,7 @@ pipeline-dados-inep/
 - `data/interim/`: dados intermediarios gerados pela pipeline.
 - `data/processed/`: bases finais processadas pela pipeline.
 - `outputs/relatorios/`: relatorios de controle, auditoria e validacao.
-- `tests/` e o script `scripts/testar_conexao_postgres.py` são recursos locais de desenvolvimento, ignorados pelo Git e não distribuídos com o repositório.
+- `tests/`, `pytest.ini` e `scripts/`: recursos locais de desenvolvimento ignorados pelo Git e não distribuídos com o repositório. Os caches e arquivos temporários do pytest também são ignorados.
 
 ## Regra pratica
 

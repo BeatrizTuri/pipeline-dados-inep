@@ -1,6 +1,6 @@
 # Modelo PostgreSQL e estratégia de carga
 
-Este documento explica o modelo relacional da camada analítica e os requisitos da futura carga. A estrutura das cinco tabelas está definida em [schema.sql](../src/pipeline/banco/schema.sql). O carregador, a staging e a publicação transacional ainda não estão implementados. As instruções de configuração estão no [README](../README.md#etapa-6--configuração-postgresql); os testes de infraestrutura são mantidos apenas no ambiente local.
+Este documento explica o modelo relacional da camada analítica e o contrato da carga. A estrutura das cinco tabelas está definida em [schema.sql](../src/pipeline/banco/schema.sql), preservado nesta implementação. O carregador, a staging e a publicação transacional estão em [persistencia.py](../src/pipeline/persistencia.py). As instruções estão no [README](../README.md#etapa-6--persistência-postgresql); os resultados reais estão no [diário técnico](diario_tecnico.md).
 
 ## Escopo e fontes
 
@@ -31,7 +31,7 @@ A normalização total poderá ser reavaliada quando os dados demonstrarem que a
 
 ## Modelo relacional
 
-As tabelas abaixo são definidas pelo script SQL e precisam ser criadas em cada ambiente antes de uma futura carga. `text` preserva códigos, nomes e hashes sem padding ou conversão numérica. Todos os IDs dimensionais usam `text` com verificação do formato `^[0-9a-f]{64}$`; entre os IDs, NULL é permitido apenas nas referências municipais. Nenhum código recebe preenchimento de zeros ou normalização adicional.
+As tabelas abaixo são definidas pelo script SQL e precisam ser criadas em cada ambiente antes da carga. `text` preserva códigos, nomes e hashes sem padding ou conversão numérica. Todos os IDs dimensionais usam `text` com verificação do formato `^[0-9a-f]{64}$`; entre os IDs, NULL é permitido apenas nas referências municipais. Nenhum código recebe preenchimento de zeros ou normalização adicional.
 
 ```mermaid
 erDiagram
@@ -140,7 +140,7 @@ PK (`ano_inicio`, `codigo_original`); CHECK `ano_inicio <= ano_fim`. Copiar os 2
 
 | Coluna | Tipo PostgreSQL | Nulo? | Significado |
 | --- | --- | --- | --- |
-| `id_execucao` | uuid | Não | PK; gerado pelo futuro carregador, sem exigir extensão. |
+| `id_execucao` | uuid | Não | PK; gerado pelo carregador, sem exigir extensão. |
 | `inicio` | timestamptz | Não | Instante de início. |
 | `fim` | timestamptz | Sim | Preenchido quando a execução terminar. |
 | `status` | text | Não | `em_execucao`, `sucesso`, `falha` ou `interrompida`. |
@@ -182,9 +182,9 @@ Todas as FKs usarão `ON DELETE NO ACTION` e `ON UPDATE NO ACTION`, sem cascata.
 
 No futuro Power BI, a relação direta município–fato e a relação município–escola–fato não devem ser configuradas automaticamente como dois caminhos ativos de filtro. A escolha do caminho pertence à modelagem semântica posterior; não altera a integridade relacional proposta aqui.
 
-## Estratégia conceitual de carga
+## Estratégia de carga
 
-Escolha inicial proposta: substituição completa da publicação analítica, por ser simples de comparar com os Parquets e permitir remover registros ou anos que deixaram de existir na origem. Não será append nem UPSERT sem tratamento de exclusões. A adequação do tempo, espaço e volume de WAL deverá ser medida na implementação; 2,59 milhões de linhas não constituem uma medição de desempenho do banco.
+Estratégia implementada: substituição completa da publicação analítica, sem append ou UPSERT. Reduções de período ou contagens em relação à carga ativa bloqueiam a substituição até a revisão explícita da origem; o comando não fornece bypass automático. Tempos reais constam no diário técnico; dimensionamento de espaço e WAL depende do ambiente.
 
 ### 1. Fixar e identificar a origem
 
@@ -198,7 +198,7 @@ Serializar cargas com um lock de aplicação no PostgreSQL, por exemplo advisory
 
 Inserir o controle `em_execucao` e confirmar esse registro em transação própria antes da carga. Usar staging temporária isolada por sessão, uma tabela para cada produto, mantendo todos os atributos de origem e preservando linhas entre commits durante a preparação. Não compartilhar staging entre execuções.
 
-O futuro carregador lerá Parquet em lotes e enviará os valores por `COPY FROM STDIN` em formato suportado, com codificação e representação de NULL explícitas. PostgreSQL COPY não recebe arquivos Parquet diretamente. Não descartar erros de conversão nem confundir string vazia com NULL. O driver está disponível para o teste de conexão, mas o envio dos lotes e sua conversão ainda não estão implementados. [COPY](https://www.postgresql.org/docs/current/sql-copy.html).
+O carregador lê Parquet em lotes e envia os valores por `psycopg` 3 e `COPY FROM STDIN`, com strings Unicode, float64 sem arredondamento e NULL explícito. PostgreSQL COPY não recebe arquivos Parquet diretamente. Nenhum erro de conversão é descartado e strings vazias não viram NULL. A transferência inteira é conferida com digest SHA-256 de linhas tipadas lidas de volta da staging na ordem original. [COPY](https://www.postgresql.org/docs/current/sql-copy.html).
 
 ### 3. Validar staging
 
@@ -241,9 +241,9 @@ Leitores não enxergam alterações não confirmadas, mas consultas distintas so
 
 ## Estado da implementação e critérios de aceitação
 
-Estão disponíveis o script de criação da estrutura SQL e o teste de conexão Python. Criar banco e usuário e executar o schema são procedimentos externos à pipeline. O teste de conexão exige configuração local e não carrega nem valida dados nas tabelas.
+Estão disponíveis no repositório o script SQL e o carregador. Os testes automatizados são mantidos somente no ambiente local e não são distribuídos com o repositório. Criar banco e usuário e executar o schema continuam sendo procedimentos externos à pipeline. `python main.py --etapa 6` executa somente a persistência dos produtos publicados pela Etapa 5. O comando sem argumentos mantém seu comportamento anterior, sem carga automática no banco.
 
-A implementação da persistência deverá:
+O contrato da persistência exige:
 
 - Criar staging temporária e transferir lotes usando `psycopg` e `COPY`, com validação antes da publicação. `pandas.to_sql()` não será o mecanismo principal.
 - Registrar o início em `controle_carga` em transação própria; confirmar sucesso junto aos dados e registrar falha após rollback.
@@ -252,4 +252,6 @@ A implementação da persistência deverá:
 - Demonstrar duas cargas da mesma origem com conteúdo idêntico e controles distintos; provar que uma carga com falha mantém a publicação anterior ativa.
 - Registrar tempos e contagens reais antes de conectar o Power BI.
 
-Essas garantias descrevem o comportamento exigido do carregador futuro; não representam uma carga já implementada ou testada.
+O carregador implementa captura temporária verificada por hashes, staging isolada por sessão, fidelidade Parquet–staging, validações de conteúdo e relações, publicação atômica e reconciliação de resposta perdida ao COMMIT. A staging conserva os atributos redundantes da fato até a validação; a FK municipal escolar é derivada somente por correspondência única dos quatro atributos. A comparação final usa FULL JOIN por chaves validadas como únicas e não nulas, com IS DISTINCT FROM em todas as colunas e contagens iguais: detecta diferenças e linhas ausentes em ambas as direções sem transformar valores.
+
+Os testes de integração usam schemas descartáveis, cobrindo rejeições na staging e rollback depois das exclusões e inserções dimensionais. Resultados da carga completa, reexecução e verificações independentes são registrados no diário técnico. A captura deve ocorrer fora de uma publicação da Etapa 5; hashes não provam a versão produtora, registrada como desconhecida. Mudanças locais e commit referem-se ao carregador, não retroativamente aos Parquets.
