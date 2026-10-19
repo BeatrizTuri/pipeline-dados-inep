@@ -24,29 +24,11 @@ Este dicionário descreve os campos canônicos anuais, a base histórica e a cam
 | Reprovação | `TRE_*`, `Taxa de Reprovação*`, `2_*` | Percentual de reprovação. |
 | Abandono | `TAB_*`, `Taxa de Abandono*`, `3_*` | Percentual de abandono. |
 
-## Observações de auditoria
+## Produtos
 
-- Os arquivos de 2007 a 2011 estão organizados por abas regionais; a consolidação desses anos deve combinar as abas regionais antes de gerar uma base anual.
-- A partir de 2012, a maior parte dos arquivos possui aba `ESCOLAS`.
-- Os nomes das colunas mudam ao longo do tempo, então a limpeza deve mapear aliases para nomes canônicos antes da consolidação.
-- A Etapa 3 ainda não converte tipos, não trata valores ausentes e não calcula indicadores.
+A Etapa 4 gera bases anuais padronizadas com as colunas de identificação, taxas e procedência (`fonte_arquivo`, `fonte_caminho`, `fonte_aba`). A Etapa 5 reúne os anos de 2007–2025, preservando a união das colunas no histórico. Campos ausentes em um layout ficam nulos. Linhas sem escola permanecem somente no histórico.
 
-## Saída da Etapa 4
-
-- A Etapa 4 gera arquivos anuais padronizados em `data/interim/taxas_rendimento_escolar_padronizada/`.
-- Cada arquivo anual preserva os campos canônicos de identificação, as colunas de taxa padronizadas por família e os metadados `fonte_arquivo`, `fonte_caminho` e `fonte_aba`.
-- As famílias de taxas são padronizadas com os prefixos `tap_`, `tre_` e `tab_`.
-- Valores textuais usados como ausentes nas planilhas, como `--`, são convertidos para valor ausente na base intermediária.
-- A Etapa 4 ainda não empilha todos os anos em uma base histórica única; isso fica reservado para a Etapa 5.
-
-## Saída da Etapa 5
-
-- A Etapa 5 gera a base histórica consolidada em `data/processed/taxas_rendimento_escolar_consolidada.parquet`.
-- A base consolidada cobre o período de 2007 a 2024.
-- A consolidação preserva os campos de identificação, as colunas de taxas e os metadados de rastreabilidade.
-- Como as estruturas das taxas variam entre períodos, a base consolidada contém a união das colunas padronizadas dos arquivos anuais.
-- Colunas que não existem em determinado ano ficam com valor ausente nesse ano.
-- Registros sem `co_entidade` são preservados no histórico e excluídos somente da camada analítica escolar, com contagem no relatório.
+A [metodologia](metodologia.md) descreve a leitura das abas, a limpeza e o tratamento das ocorrências.
 
 ## Tipos e integridade da Etapa 5
 
@@ -76,7 +58,9 @@ Total, segmentos e anos/séries são recortes sobrepostos: não devem ser somado
 | 2011–2014 | Nomes descritivos com `ens_fundamental`, `anos_iniciais_1o_ao_5o_ano`, `1o_ano` etc. |
 | 2015–2017 | `fun`, `f14`, `f58`, `f00`–`f08`, `med`, `m01`–`m04`, `mns`. |
 | 2018–2020 | Cabeçalhos locais associam `f04` a anos finais, `f58` ao 1º ano e `f00`–`f03` ao 2º–5º ano; `f05`–`f08` continuam 6º–9º ano. |
-| 2021–2024 | `fun`, `fun_ai`, `fun_af`, `fun_01`–`fun_09`, `med`, `med_01`–`med_04`, `med_ns`. |
+| 2021–2025 | `fun`, `fun_ai`, `fun_af`, `fun_01`–`fun_09`, `med`, `med_01`–`med_04`, `med_ns`. |
+
+O cabeçalho do arquivo local `tx_rend_escolas_2025.xlsx`, aba `ESCOLAS`, foi conferido em 19/10/2026: os códigos `1_CAT_*`, `2_CAT_*` e `3_CAT_*` mantêm os 18 recortes por família, incluindo anos iniciais/finais, 1º–9º ano, séries do médio e não seriado. A limpeza já produzia os mesmos 54 aliases de 2024. O catálogo estende o período iniciado em 2021 até 2025, mantendo 270 registros; não libera anos posteriores automaticamente. A extensão do catálogo exige republicar a Etapa 5 antes da carga na Etapa 6, pois a persistência confere o catálogo integral.
 
 O catálogo executável está em `src/pipeline/metricas.py`. A dimensão de métricas tem 270 registros (54 por layout), com `codigo_original`, `coluna_analitica`, `ano_inicio`, `ano_fim`, `tipo_taxa`, `etapa_ensino`, `detalhamento`, `descricao` e `observacao`. Ela inclui métricas previstas pelo layout mesmo quando um arquivo não contém todas as colunas. Métricas desconhecidas ficam no histórico e são listadas no relatório, sem associação presumida.
 
@@ -96,7 +80,7 @@ O CSV registra uma linha por arquivo e uma linha `TOTAL`, com anos, arquivos enc
 
 ## Contrato para consumo externo
 
-O contrato vigente cobre os layouts de 2007–2024. Todos os Parquets anuais encontrados são inspecionados; anos fora dos layouts conhecidos bloqueiam a publicação até revisão do catálogo. Os anos efetivamente publicados constam em `TOTAL.anos_processados`.
+O contrato vigente cobre os layouts de 2007–2025. Todos os Parquets anuais encontrados são inspecionados; anos fora dos layouts conhecidos bloqueiam a publicação até revisão do catálogo. Os anos efetivamente publicados constam em `TOTAL.anos_processados`.
 
 | Produto | Granularidade e chaves | Tipos e nulabilidade |
 | --- | --- | --- |
@@ -123,4 +107,4 @@ taxas = ds.dataset("data/processed/dashboard/taxas", format="parquet", partition
 ano_2024 = taxas.to_table(filter=ds.field("ano") == 2024)
 ```
 
-O consumidor deve conferir `TOTAL.publicado`, `TOTAL.status` e os avisos; o schema JSON descreve os tipos físicos efetivamente publicados. Status `aviso` permite consumo com as ressalvas registradas, enquanto `erro` indica tentativa não publicada. As saídas protegidas por restauração em erros de I/O não constituem transação resistente a desligamento abrupto; executar uma publicação por vez. A Etapa 4 reutiliza arquivos anuais existentes por padrão: mudanças na fonte exigem sua regeneração explícita antes de executar a Etapa 5.
+Antes do consumo, confira a publicação conforme o [README](../README.md#4-conferir-a-publicação). A [metodologia](metodologia.md#reexecução-e-proteção-das-saídas) descreve os limites da publicação de arquivos e da reutilização das bases anuais.

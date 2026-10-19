@@ -64,12 +64,7 @@ def listar_colunas_planilha(caminho: Path, aba: str, linha_cabecalho: int) -> li
 
 
 def identificar_abas_regionais(abas: list[str]) -> list[str]:
-    abas_regionais = []
-    for aba in abas:
-        nome_normalizado = normalizar_texto(aba)
-        if any(nome_normalizado.startswith(regiao) for regiao in ABAS_REGIONAIS):
-            abas_regionais.append(aba)
-    return abas_regionais
+    return [aba for aba in abas if eh_aba_regional(aba)]
 
 
 def eh_aba_regional(aba: str) -> bool:

@@ -12,7 +12,7 @@ RECORTES = (
     + [f"fun_{i:02d}" for i in range(1, 10)]
     + ["med"] + [f"med_{i:02d}" for i in range(1, 5)] + ["med_ns"]
 )
-PERIODOS = [(2007, 2010), (2011, 2014), (2015, 2017), (2018, 2020), (2021, 2024)]
+PERIODOS = [(2007, 2010), (2011, 2014), (2015, 2017), (2018, 2020), (2021, 2025)]
 COLUNAS_METRICAS = [f"{familia}_{recorte}" for familia in FAMILIAS for recorte in RECORTES]
 
 
@@ -33,7 +33,8 @@ def sufixos_periodo(ano: int) -> list[str]:
     if 2018 <= ano <= 2020:
         return (["fun", "f14", "f04", "f58", "f00", "f01", "f02", "f03", "f05", "f06", "f07", "f08"]
                 + ["med"] + [f"m{i:02d}" for i in range(1, 5)] + ["mns"])
-    if 2021 <= ano <= 2024:
+    # Cabeçalho local de 2025 conferido: mesmos recortes e aliases de 2021–2024.
+    if 2021 <= ano <= 2025:
         return RECORTES.copy()
     raise ValueError(f"Layout do ano {ano} ainda não validado no catálogo de métricas.")
 

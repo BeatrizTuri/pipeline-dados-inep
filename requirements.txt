@@ -2,10 +2,6 @@ pandas
 numpy
 openpyxl
 xlrd
-matplotlib
-jupyter
-ipykernel
 pyarrow
-pytest
 psycopg[binary]
 python-dotenv

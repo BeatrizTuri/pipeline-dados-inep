@@ -1,5 +1,35 @@
 # Diário técnico — Etapa 6
 
+## 19 de outubro de 2026 — remoção de duplicações
+
+A segunda revisão removeu o leitor de planilhas sem uso, reutilizou os aliases de identificação na limpeza e a regra de abas regionais na auditoria, concentrou a contagem de status em `main.py` e retirou dependências de desenvolvimento sem uso. O schema SQL teve apenas linhas em branco reduzidas. Metodologia e dicionário passaram a remeter aos documentos específicos em vez de repetir a explicação da carga. Validação: **82 testes aprovados**, mais comparação de 14 cenários simulados dos comandos, sem mudança nas mensagens ou códigos de saída e sem carga de produção.
+
+As views passaram a ter uma única definição em `banco/canonica.sql`; `schema.sql` mantém somente as tabelas. Foram retirados os três scripts auxiliares, com as consultas necessárias incorporadas ao modelo do banco, e o documento separado de revisão organizacional. Os registros locais antigos continuam preservados; as decisões de versionar testes e separar dependências permanecem vigentes.
+
+README, estrutura, modelo e guia dos testes foram reduzidos para evitar explicações repetidas. As explicações individuais dos testes permanecem no código. Foi removido somente o teste que comparava as duas cópias do SQL. Validação completa com integração: **82 aprovados**. Não houve recarga de dados de produção.
+
+## 19 de outubro de 2026 — suporte ao arquivo de 2025
+
+A entrada local de 2025 já havia sido padronizada pela Etapa 4, mas a Etapa 5 bloqueava a publicação porque o catálogo encerrava em 2024. Foram conferidas as linhas 6–9 do cabeçalho do Excel `tx_rend_escolas_2025.xlsx`, aba `ESCOLAS`: as três famílias mantêm os mesmos 18 recortes semânticos e códigos do período iniciado em 2021. Os Parquets de 2024 e 2025 possuem as mesmas colunas; a entrada de 2025 contém 126.685 registros.
+
+O período 2021–2024 foi estendido até 2025 em `metricas.py`, preservando as 54 métricas analíticas e os 270 registros de catálogo. Anos a partir de 2026 continuam bloqueados até revisão. Não foram alteradas a limpeza, as fontes brutas, as regras históricas de 2007–2024, as transações ou a regra municipal canônica. A Etapa 5 precisa ser republicada antes da Etapa 6 para que o catálogo Parquet corresponda ao contrato atualizado.
+
+Testes: **83 aprovados**, com integração PostgreSQL habilitada em schemas descartáveis. Foram adicionadas verificações do mapa de 2025, preservação dos períodos anteriores, rejeição de 2026, duas consolidações 2024–2025 com todas as 54 métricas e códigos textuais, e publicação PostgreSQL com catálogo e ano canônico de 2025. As evidências de cargas anteriores deste diário continuam datadas e não incluem automaticamente o novo ano.
+
+A execução integral da Etapa 5 publicou 19 anos (2007–2025), com **2.715.084 linhas históricas**, **2.715.008 linhas analíticas**, 220 colunas históricas e zero erros. O status final é `aviso`, com `publicado=True` e relacionamentos validados. Em 2025, uma linha sem código escolar permanece apenas no histórico; as 126.684 escolas identificadas representam 5.571 códigos municipais. A publicação anterior de 2007–2024 tinha 5.570 códigos; essa quantidade não é constante do modelo.
+
+A primeira execução teve acesso negado ao substituir o relatório CSV existente, embora os Parquets já tivessem sido publicados. O arquivo tinha acesso restrito ao grupo Administradores. A Etapa 5 foi repetida integralmente com acesso autorizado, concluindo a gravação do relatório pelo fluxo normal, sem alteração manual dos controles ou das permissões. A carga de produção no PostgreSQL não foi executada nesta atualização; o comando seguinte é `python main.py --etapa 6`.
+
+## 16 de outubro de 2026 — identidade e representação municipal canônica
+
+Inspecionados `camada_analitica.py`, `persistencia.py`, `schema.sql`, `config.py`, modelo e testes. A dimensão existente preserva versões dos atributos municipais pelo hash de conteúdo. O problema analítico decorre de usar o nome histórico como categoria, confundindo versão com identidade.
+
+Adicionadas as views `dim_municipio_canonica` e `vw_fato_rendimento_escolar`, sem modificar os produtos da Etapa 5. A representação canônica usa o último ano observado na fato, desempate por frequência nesse ano e depois pelo menor hash em collation `C`. A investigação anterior à implementação encontrou zero empates no último ano e zero versões sem fato. A política para códigos sem observação e os relacionamentos Power BI estão documentados no modelo.
+
+A instalação local aditiva foi confirmada em transação, sob o lock da carga. Resultado: 5.570 linhas canônicas, 5.570 códigos distintos, zero códigos nulos; 11.245 versões históricas preservadas e 2.588.324 linhas tanto na fato quanto na view. Exemplos conferidos: São Paulo (SAO PAULO / São Paulo), Embu das Artes (EMBU / Embu das Artes / EMBU DAS ARTES) e Campo Grande (Augusto Severo / AUGUSTO SEVERO / Campo Grande). Não foi necessária recarga de dados.
+
+Testes adicionados em `test_persistencia.py`: caixa/acentuação, três mudanças de denominação, ano mais recente, frequência, hash, código textual com zero, nulos, cardinalidade da view, preservação histórica, instalação repetida e rollback. Os testes existentes continuam cobrindo fidelidade Parquet–staging, publicação repetida e falhas transacionais. A definição no schema inicial é conferida contra a migração. Suíte completa com integração habilitada: **77 aprovados**. Nenhum commit ou push realizado; alterações locais anteriores foram preservadas.
+
 ## 6 de outubro de 2026 — persistência da camada analítica
 
 Implementado `src/pipeline/persistencia.py` e integrado o comando `python main.py --etapa 6`. A carga utiliza exclusivamente os produtos publicados da Etapa 5 e a configuração local `.env`, com usuário da aplicação. O schema SQL e os Parquets de origem permanecem preservados.
@@ -53,3 +83,13 @@ Avisos: a publicação de origem da Etapa 5 possui status `aviso`, preservado no
 **Etapa 6 concluída:** implementação, testes, duas cargas completas, idempotência, rollback testado, comparação independente e documentação finalizados. Power BI permanece como trabalho futuro.
 
 Os relatórios locais por UUID ficam em `outputs/relatorios/persistencia_<UUID>.json`; o resultado mais recente está em `relatorio_persistencia_postgresql.json`. Nenhum deles inclui credenciais.
+
+## 6 de outubro de 2026 — revisão documental e reprodutibilidade
+
+Após o fechamento da etapa 6, foi realizada revisão restrita à documentação, organização e dependências. O método e o modelo passaram a descrever a solução implementada no presente. A restrição municipal foi alinhada ao schema: FK preenchida exige código preenchido, mas FK nula não exige código nulo. O critério mais restritivo de correspondência única aplicado pelo carregador foi documentado separadamente.
+
+A decisão anterior de manter testes exclusivamente locais, registrada no diário histórico em `docs/registros_locais/diario_tecnico.md`, foi substituída nesta revisão por sua inclusão no conjunto versionável do projeto. `tests/`, `pytest.ini` e o diagnóstico de conexão então existente deixaram de ser ignorados. As duas cópias de testes em `scripts/` foram removidas após comparação textual com os originais preservados em `tests/`; não continham casos adicionais. Os registros antigos e o manifesto CSV de descoberta foram preservados localmente.
+
+As dependências foram separadas entre execução (`requirements.txt`) e desenvolvimento (`requirements-dev.txt`, incluindo o conjunto de execução). Foram mantidas pandas, NumPy, openpyxl, xlrd, PyArrow, psycopg e python-dotenv na execução. Pytest, matplotlib, Jupyter e ipykernel ficaram no conjunto de desenvolvimento. Os resultados das cargas anteriores permanecem como evidências datadas; não foi realizada nova carga no banco nesta revisão.
+
+Validação desta revisão: `python -m pytest -q` coletou 72 testes e terminou com **54 aprovados e 18 de integração pulados**, em **5,75 segundos**. A integração não foi habilitada para preservar o banco nesta tarefa. Os imports da pipeline e os leitores Excel foram conferidos no ambiente existente, e o conjunto de execução cobre as dependências identificadas. Código funcional, schema, dados e evidências das cargas anteriores foram preservados; não foi criado commit nem implementado Power BI.

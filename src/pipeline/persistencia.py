@@ -26,7 +26,7 @@ from src.pipeline.config import DASHBOARD_DIR, PROJECT_ROOT, RELATORIOS_DIR, TAM
 from src.pipeline.metricas import COLUNAS_METRICAS, dimensao_metricas
 
 LOGGER = logging.getLogger(__name__)
-VERSAO = "etapa6-v1"
+VERSAO = "etapa6-v2-canonica"
 LOCK = 60420072024
 TABELAS = ("dim_municipio", "dim_escola", "catalogo_metricas", "fato_rendimento_escolar")
 COLUNAS = {
@@ -315,8 +315,15 @@ def contagens_banco(conexao, prefixo="public."):
     return resultado
 
 
+def instalar_views_canonicas(conexao):
+    """Instala as views sem reescrever o histórico ou alterar as FKs."""
+    conexao.execute((Path(__file__).parent / "banco/canonica.sql").read_text(encoding="utf-8"))
+
+
 def publicar(conexao, id_execucao, contagens, validacoes):
     """Chamador mantém todos os DELETE/INSERT/validações/controle na mesma transação."""
+    # Views e dados são publicados juntos; uma falha também reverte o DDL.
+    instalar_views_canonicas(conexao)
     for tabela in reversed(TABELAS):
         conexao.execute(f"DELETE FROM public.{tabela}")
     for tabela in TABELAS:

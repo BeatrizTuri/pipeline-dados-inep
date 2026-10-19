@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.pipeline.auditoria import identificar_abas_regionais, normalizar_coluna
+from src.pipeline.auditoria import (
+    COLUNAS_IDENTIFICACAO_ALIASES,
+    identificar_abas_regionais,
+    normalizar_coluna,
+)
 from src.pipeline.config import (
     INTERIM_TAXAS_RENDIMENTO_DIR,
     INVENTARIO_ARQUIVOS,
@@ -19,40 +23,11 @@ from src.pipeline.ingestao import (
 )
 
 
-COLUNAS_IDENTIFICACAO = [
-    "ano",
-    "no_regiao",
-    "sg_uf",
-    "co_municipio",
-    "no_municipio",
-    "co_entidade",
-    "no_entidade",
-    "tipoloca",
-    "dependad",
-]
-
+COLUNAS_IDENTIFICACAO = list(COLUNAS_IDENTIFICACAO_ALIASES)
 ALIASES_IDENTIFICACAO = {
-    "ano": "ano",
-    "nu_ano_censo": "ano",
-    "regiao": "no_regiao",
-    "no_regiao": "no_regiao",
-    "uf": "sg_uf",
-    "sg_uf": "sg_uf",
-    "codigo_do_municipio": "co_municipio",
-    "co_municipio": "co_municipio",
-    "nome_do_municipio": "no_municipio",
-    "no_municipio": "no_municipio",
-    "codigo_da_escola": "co_entidade",
-    "co_entidade": "co_entidade",
-    "nome_da_escola": "no_entidade",
-    "no_entidade": "no_entidade",
-    "localizacao": "tipoloca",
-    "tipoloca": "tipoloca",
-    "no_categoria": "tipoloca",
-    "rede": "dependad",
-    "dependad": "dependad",
-    "dependencia_administrativa": "dependad",
-    "no_dependencia": "dependad",
+    alias: campo
+    for campo, aliases in COLUNAS_IDENTIFICACAO_ALIASES.items()
+    for alias in aliases
 }
 
 PREFIXOS_TAXAS_NUMERICOS = {

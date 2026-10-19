@@ -153,22 +153,6 @@ def carregar_metadados_planilha(caminho: Path) -> dict[str, str]:
     }
 
 
-def carregar_planilha(caminho: Path) -> tuple[pd.DataFrame, dict[str, str]]:
-    arquivo_excel = pd.ExcelFile(caminho)
-    aba, observacao_aba = escolher_aba(arquivo_excel.sheet_names)
-    linha_cabecalho, observacao_cabecalho = detectar_linha_cabecalho(caminho, aba)
-
-    dados = pd.read_excel(caminho, sheet_name=aba, header=linha_cabecalho, dtype=str)
-    metadados = {
-        "aba_utilizada": aba,
-        "linha_cabecalho": str(linha_cabecalho + 1),
-        "quantidade_linhas": str(len(dados)),
-        "quantidade_colunas": str(len(dados.columns)),
-        "observacao": f"{observacao_aba} {observacao_cabecalho}",
-    }
-    return dados, metadados
-
-
 def gerar_relatorio_ingestao(
     caminho_inventario: Path = INVENTARIO_ARQUIVOS,
     caminho_saida: Path = RELATORIO_INGESTAO,

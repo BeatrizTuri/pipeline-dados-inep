@@ -1,6 +1,6 @@
 # Metodologia de processamento
 
-Este documento explica as regras atuais da pipeline de Taxas de Rendimento Escolar do INEP. O recorte validado é 2007–2024, com dados em nível de escola. O projeto prepara dados para consulta e análise; não calcula indicadores derivados.
+Este documento explica as regras atuais da pipeline de Taxas de Rendimento Escolar do INEP. O recorte validado é 2007–2025, com dados em nível de escola. O projeto prepara dados para consulta e análise; não calcula indicadores derivados.
 
 ## Da fonte à base anual
 
@@ -18,7 +18,7 @@ O histórico reúne a união das colunas anuais. Campos que não existem em dete
 
 A camada analítica tem uma linha por `ano + co_entidade` e 54 métricas em colunas. Somente registros sem código escolar são excluídos dessa camada, com contagem no relatório. Duplicidades de ano/escola identificada bloqueiam a publicação; não há escolha automática de uma ocorrência.
 
-O histórico completo permanece em Parquet. A persistência PostgreSQL se destina à camada analítica e ainda não possui carga implementada.
+O histórico completo permanece em Parquet. A Etapa 6 persiste exclusivamente a camada analítica no PostgreSQL, como camada de disponibilização e consulta, sem recalcular métricas ou modificar os arquivos produzidos pela Etapa 5.
 
 ## Harmonização das taxas
 
@@ -30,7 +30,7 @@ Não somar recortes sobrepostos nem tratar a harmonização de nomes como garant
 
 Escolas e municípios recebem IDs SHA-256 calculados a partir do conjunto de atributos observado. Um código pode ter várias versões, enquanto um conjunto idêntico reutiliza o mesmo ID. Os atributos mais recentes não são aplicados retroativamente.
 
-As junções devem usar `id_escola` e `id_municipio`, não apenas os códigos INEP. Na camada analítica, `Particular` é harmonizado para `Privada`; o histórico preserva a representação anterior.
+As junções históricas usam `id_escola` e `id_municipio` para preservar a versão correta. A representação municipal canônica agrupa por `co_municipio`, conforme o [modelo do banco](modelo_banco_dados.md). Na camada analítica, `Particular` é harmonizado para `Privada`; o histórico preserva a representação anterior.
 
 ## Qualidade e limites dos dados
 
@@ -55,4 +55,8 @@ O status `aviso` significa publicação com ocorrências registradas. `erro` sig
 
 A Etapa 5 prepara arquivos temporários e valida as duas camadas antes de substituí-las. Reexecutar não acrescenta a nova base à anterior. Falhas de publicação por exceção de I/O provocam restauração dos produtos anteriores; essa troca de arquivos não oferece garantia transacional contra desligamento abrupto.
 
-O rollback transacional planejado para PostgreSQL é uma responsabilidade futura e distinta. Consulte o [modelo do banco](modelo_banco_dados.md).
+## Persistência no PostgreSQL
+
+A Etapa 6 confere os arquivos publicados, carrega uma área temporária e valida os dados antes de substituir a publicação em uma transação. Reexecuções não acumulam duplicatas; falhas anteriores ao commit preservam a publicação válida. A carga não modifica os Parquets.
+
+O [modelo do banco](modelo_banco_dados.md#instalação-e-carga) concentra os detalhes de captura, staging, controle, rollback e recuperação de falhas.

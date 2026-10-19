@@ -12,8 +12,11 @@ outputs/
 .env
 
 /docs/registros_locais/
-/scripts/
-/tests/
-/pytest.ini
 /.pytest_cache/
 /.pytest_tmp_etapa6/
+/.pytest_tmp*/
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-wal
+*.sqlite-shm
