@@ -46,4 +46,3 @@ Dados, relatórios, `.env`, ambiente virtual e caches não acompanham o Git. O a
 - [Dicionário](dicionario_dados.md): campos e significado das métricas.
 - [Modelo do banco](modelo_banco_dados.md): tabelas, município canônico e Power BI.
 - [Testes](guia_testes.md): como executar e interpretar as verificações.
-- [Diário técnico](diario_tecnico.md): decisões e resultados datados; não é um manual de leitura do código.

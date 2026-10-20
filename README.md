@@ -93,6 +93,5 @@ O [guia dos testes](docs/guia_testes.md) explica os casos, como habilitar integr
 - [Metodologia](docs/metodologia.md): regras de transformação e qualidade.
 - [Dicionário](docs/dicionario_dados.md): campos, tipos e métricas.
 - [Modelo do banco](docs/modelo_banco_dados.md): relações, carga e Power BI.
-- [Diário técnico](docs/diario_tecnico.md): decisões e evidências datadas.
 
-Dados, relatórios, credenciais, ambientes virtuais e caches ficam fora do Git. Os resultados das execuções reais estão registrados no diário técnico.
+Dados, relatórios, registros pessoais, credenciais, ambientes virtuais e caches ficam fora do Git.
