@@ -1,5 +1,5 @@
 """Testes do contrato; integração usa schema descartável, nunca public."""
-import os
+import re
 import json
 from contextlib import contextmanager
 import uuid
@@ -180,6 +180,8 @@ def test_falha_configuracao_gera_relatorio(tmp_path):
 
 class ConexaoIsolada:
     def __init__(self, conexao, schema):
+        if not re.fullmatch(r"teste_etapa6_[0-9a-f]{32}", schema):
+            raise p.ErroPersistencia("Schema de teste não autorizado.")
         self.conexao, self.schema = conexao, schema
         self.falhar = False
 
@@ -206,8 +208,6 @@ class ConexaoIsolada:
 
 @pytest.fixture
 def banco(tmp_path):
-    if os.getenv("INEP_TEST_INTEGRATION") != "1":
-        pytest.skip("Integração opcional: INEP_TEST_INTEGRATION=1; schema isolado")
     schema = "teste_etapa6_" + uuid.uuid4().hex
     with psycopg.connect(**p.configuracao(), autocommit=True) as conexao:
         conexao.execute(f'CREATE SCHEMA "{schema}"')
@@ -226,6 +226,8 @@ def banco(tmp_path):
                     p.carregar_parquet(adaptada, tabela, arquivos)
             yield adaptada, manifesto
         finally:
+            if not re.fullmatch(r"teste_etapa6_[0-9a-f]{32}", schema):
+                raise p.ErroPersistencia("Limpeza de schema não autorizada.")
             conexao.execute(f'DROP SCHEMA "{schema}" CASCADE')
 
 
@@ -315,8 +317,6 @@ def test_lock_serializa_cargas():
     Duas conexões tentam obter o mesmo lock de teste → somente uma obtém por vez → verifica a
     exclusão oferecida pelo lock. Não executa duas cargas completas em paralelo.
     """
-    if os.getenv("INEP_TEST_INTEGRATION") != "1":
-        pytest.skip("Integração opcional")
     chave = p.LOCK + 1  # Lock separado do carregador real.
     with psycopg.connect(**p.configuracao(), autocommit=True) as a, psycopg.connect(**p.configuracao(), autocommit=True) as b:
         assert a.execute("SELECT pg_try_advisory_lock(%s)", (chave,)).fetchone()[0]

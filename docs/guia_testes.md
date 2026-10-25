@@ -21,18 +21,18 @@ O teste de duplicidade, por exemplo, cria duas observações da mesma escola no 
 Na raiz do projeto, com as dependências de desenvolvimento instaladas:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+python -m pytest
 ```
 
-Por padrão, os 23 casos de integração são pulados. Para executá-los também:
+Por padrão, são selecionados os 59 casos independentes do banco; os 23 de integração são desmarcados, não ignorados com `skip`. Para selecionar somente a integração:
 
 ```powershell
-$env:INEP_TEST_INTEGRATION = '1'
-.\.venv\Scripts\python.exe -m pytest -q
-Remove-Item Env:INEP_TEST_INTEGRATION
+python -m pytest -m integration
 ```
 
-A integração exige PostgreSQL e `.env` configurados. Usa dados artificiais em schemas descartáveis, sem substituir as tabelas analíticas de produção. Para acompanhar um teste em detalhe:
+A integração exige exclusivamente `.env.test` e o banco `inep_test`, com usuário sem privilégios administrativos. Veja a [preparação e as permissões no README](../README.md#preparar-a-integração-postgresql). Não há fallback para `.env` nem uso de `INEP_TEST_INTEGRATION`. A fixture em `tests/conftest.py` protege também conexões secundárias e de recuperação, verificando a identidade no servidor antes de criar objetos. Configuração ausente ou proibida causa erro explícito. Usa dados artificiais em schemas descartáveis dentro de `inep_test`; a limpeza não depende de rollback global. Uma interrupção abrupta pode deixar schemas residuais. Não execute em paralelo.
+
+Os dois grupos totalizam 82 casos. Acrescente `--collect-only -q` a cada comando para conferir a seleção sem acessar PostgreSQL. Para acompanhar um teste em detalhe:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/test_consolidacao.py -k duplicidade_entre_lotes -v

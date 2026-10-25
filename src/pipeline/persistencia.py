@@ -21,7 +21,7 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 from dotenv import dotenv_values
 
-from src.pipeline.camada_analitica import ATRIBUTOS_ESCOLA, ATRIBUTOS_MUNICIPIO, SCHEMA_ANALITICO
+from src.pipeline.camada_analitica import ATRIBUTOS_MUNICIPIO, SCHEMA_ANALITICO
 from src.pipeline.config import DASHBOARD_DIR, PROJECT_ROOT, RELATORIOS_DIR, TAMANHO_LOTE
 from src.pipeline.metricas import COLUNAS_METRICAS, dimensao_metricas
 
